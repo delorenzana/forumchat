@@ -9,7 +9,7 @@ Chat example
     <pre>
     ```
     <script type="text/javascript" src="/js/jquery-1.10.2.js"></script>
-    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script src="<path-to-plugin-domain>:3000/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="<path-to-plugin-domain>/public/javascripts/chat.js"></script>
     <script type="text/javascript">
       $(function(){ $('#chat').initChat(<chatroom-name>); });
