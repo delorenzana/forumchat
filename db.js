@@ -10,7 +10,34 @@ var Db = require('mongodb').Db,
     BSON = require('mongodb').pure().BSON,
     assert = require('assert');
     db = null;
-
-module.exports.startDb = function(){
-    db = new Db('chat', new Server('localhost', 27017), {safe:false});
+    
+function startDb(){
+  db = new Db('chat', new Server('localhost', 27017), {safe:false});
 }
+
+function saveMsg(msg){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("messages");
+      collection.insert(msg);
+  });
+}
+
+function getMsgs(query, callback){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("messages");
+    collection.find(query).toArray(function(err, messages) {
+       if(!messages || err){
+        callback(true);
+       }else{
+        callback(false, messages);   
+       }
+        db.close();
+      });
+  });
+}
+
+module.exports.startDb = startDb;
+module.exports.saveMsg = saveMsg;
+module.exports.getMsgs = getMsgs;
