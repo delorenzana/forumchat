@@ -15,6 +15,51 @@ function startDb(){
   db = new Db('chat', new Server('localhost', 27017), {safe:false});
 }
 
+function saveChatroom(query, callback){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("chatrooms");
+    collection.insert(query, function(err) {
+       if(err){
+        callback(true);
+       }else{
+        callback(false, query);   
+       }
+        db.close();
+      });
+  });
+}
+
+function getChatrooms(query, callback){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("chatrooms");
+    collection.find(query).toArray(function(err, chatrooms) {
+       if(!chatrooms || err){
+        callback(true);
+       }else{
+        callback(false, chatrooms);   
+       }
+        db.close();
+      });
+  });
+}
+
+function getChatroom(query, callback){
+    startDb();
+    db.open(function(err, db) {
+      var collection = db.collection("chatrooms");
+      collection.findOne(query, function(err, chatroom){
+           if(!chatroom || err){
+            callback(true);
+          }else{
+            callback(false, chatroom);   
+          }
+      });
+    });
+}
+
+
 function saveMsg(msg){
   startDb();
   db.open(function(err, db) {
@@ -41,3 +86,6 @@ function getMsgs(query, callback){
 module.exports.startDb = startDb;
 module.exports.saveMsg = saveMsg;
 module.exports.getMsgs = getMsgs;
+module.exports.saveChatroom = saveChatroom;
+module.exports.getChatrooms = getChatrooms;
+module.exports.getChatroom = getChatroom;
