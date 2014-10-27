@@ -1,16 +1,21 @@
 var chatroom = null;
 var username = null;
 var user_id = null;
+var is_moderator = false;
 var currentMsgs = null;
 var currentChatrooms = null;
 var chatroomsLoaded = false;
+var onlineUsers = null;
 var socket = null;
 
-$.fn.initChat = function(the_username, the_user_id){
+$.fn.initChat = function(the_username, the_user_id, user_is_moderator){
     
     username = the_username;
     user_id = the_user_id;
-
+    is_moderator = user_is_moderator;
+    
+    //console.log(is_moderator);
+    
     socket = io('http://localhost:3000');
     
      $('<a/>', {
@@ -18,6 +23,10 @@ $.fn.initChat = function(the_username, the_user_id){
       href: '',
       onclick: 'return showHideChatrooms();'
     }).appendTo('#chat');
+    
+//    $('<img/>', {
+//      src: 'data/avatars/s/0/'+user_id+'.jpg'
+//    }).appendTo('#chat');
     
     embedChatrooms();
 }
@@ -30,7 +39,7 @@ function embedChatrooms(){
     }).appendTo('#chat');
     
      $('<h3/>', {
-      text: 'Chatrooms'
+      text: 'Chat Rooms'
     }).appendTo('#chatrooms');
     
     $('<ul/>', {
@@ -82,6 +91,20 @@ function embedChatrooms(){
       showHideAddChatroom();
     });
     
+    $('<div/>', {
+      id: 'onlineusers',
+      style: 'display:none;padding:10px'
+    }).appendTo('#chat');
+    
+     $('<h3/>', {
+      text: 'Online Users'
+    }).appendTo('#onlineusers');
+    
+    $('<ul/>', {
+      id: 'online_users_list',
+      style: 'list-style-type:none'
+    }).appendTo('#onlineusers');
+    
 }
 
 function showHideChatrooms(){
@@ -103,6 +126,31 @@ function showHideChatrooms(){
     }
     
     $('#chatrooms').toggle();
+    
+    if($('#chatrooms').is(':visible')){
+      $('#add_chatroom').hide();  
+      $('#add_chatroom_link').text('+');  
+      $('#onlineusers').show();  
+      
+      $.get(
+        'http://localhost:3000/online_users', {}, function(data, textStatus, jqXHR ) {
+         if(textStatus === 'success'){
+           onlineUsers = data;
+           if(onlineUsers){
+             for(i in onlineUsers){
+               addOnlineUserToList(onlineUsers[i]);
+             }    
+           }
+           chatroomsLoaded = true; 
+         }
+       }
+     );
+      
+    }else{
+       $('#add_chatroom').show();
+       $('#add_chatroom_link').text('-');  
+       $('#onlineusers').hide();  
+    }
 
    return false;
 }
@@ -113,10 +161,15 @@ function showHideAddChatroom(){
     
     if($('#add_chatroom').is(':visible')){
        $('#add_chatroom_link').text('-');  
+       $('#chatroom').remove();
+       socket.removeListener('chat message');
     }else{
        $('#add_chatroom_link').text('+');  
     }
 
+    //$('#chatroom').remove();
+    //socket.removeListener('chat message');
+             
    return false;
 }
 
@@ -130,6 +183,20 @@ function addChatroomToList(thechatroom){
       href: '',
       onclick: "return showChatroom('"+thechatroom._id+"');"
     }).appendTo('#'+thechatroom._id);
+}
+
+function addOnlineUserToList(theuser){
+    if(theuser.user_id !== user_id){
+      $('<li/>', {
+        id: theuser.user_id,
+      }).appendTo('#online_users_list');
+    
+      $('<a/>', {
+        text: theuser.username,
+        href: '',
+        onclick: "return showUserChat('"+theuser.user_id+"', '"+theuser.username+"');"
+      }).appendTo('#'+theuser.user_id);
+    }   
 }
 
 function showChatroom(thechatroom_id){
@@ -173,7 +240,7 @@ function showChatroom(thechatroom_id){
     
              $('#chat_form').submit(function(){
                if($('#m').val()){
-                 socket.emit('chat message', { message: $('#m').val(), user_id: user_id, room_id: chatroom._id});
+                 socket.emit('chat message', { message: $('#m').val(), user_id: user_id, username: username, room_id: chatroom._id});
                  $('#m').val('');
                }
                return false;
@@ -181,7 +248,16 @@ function showChatroom(thechatroom_id){
 
              socket.on('chat message', function(msg){
                if(msg.room_id === chatroom._id){
-                 $('#msgs'+chatroom._id).append($('<li>').text(msg.message));
+                 $('<li/>', {
+                     id: msg.room_id+'_'+i,
+                     text: msg.message
+                 }).appendTo('#msgs'+chatroom._id);
+                 $('<img/>', {
+                     src: 'data/avatars/s/0/'+msg.user_id+'.jpg'
+                 }).appendTo('#msgs'+chatroom._id).last();
+                 $('<span/>', {
+                     text: msg.username
+                 }).appendTo('#msgs'+chatroom._id).last();
                }
              });
 
@@ -190,8 +266,15 @@ function showChatroom(thechatroom_id){
                currentMsgs = data;
                if(currentMsgs){
                  for(i in currentMsgs){
-                     console.log(i);
-                   $('#msgs'+chatroom._id).append($('<li>').text(currentMsgs[i].message));
+                   $('<li/>', {
+                     text: currentMsgs[i].message
+                    }).appendTo('#msgs'+chatroom._id);
+                   $('<img/>', {
+                     src: 'data/avatars/s/0/'+currentMsgs[i].user_id+'.jpg'
+                    }).appendTo('#msgs'+chatroom._id).last();
+                    $('<span/>', {
+                     text: currentMsgs[i].username
+                 }).appendTo('#msgs'+chatroom._id).last();
                  }    
                }
              });
@@ -199,6 +282,89 @@ function showChatroom(thechatroom_id){
          }
        }
      );
+     
+     if($('#add_chatroom').is(':visible')){
+      $('#add_chatroom').hide();  
+      $('#add_chatroom_link').text('+');  
+    }
+     
+     return false;
+}
+
+function showUserChat(with_user_id, with_username){
+     
+    $('#userchat').remove();
+    socket.removeListener('userchat message');
+             
+    $('<div/>', {
+      id: 'userchat',
+      style: 'padding:10px'
+    }).appendTo('#chat');
+    
+    $('<p/>', {
+      text: with_username
+    }).appendTo('#userchat');
+
+    $('<ul/>', {
+      id: 'userchatmsgs'+user_id+'-'+with_user_id,
+      style: 'list-style-type:none'
+    }).appendTo('#userchat');
+
+    $('<form/>', {
+      action: '',
+      id: 'userchat_form'
+    }).appendTo('#userchat');
+
+    $('<input/>', {
+      id: 'ucm',
+      autocomplete: 'off'
+    }).appendTo('#userchat_form');
+
+    $('<button/>', {
+      text: 'Send'
+    }).appendTo('#userchat_form');
+    
+//    $('#userchat_form').submit(function(){
+//      if($('#ucm').val()){
+//        socket.emit('userchat message', { message: $('#ucm').val(), user_id_1: user_id, user_id_2: with_user_id, username: username });
+//        $('#ucm').val('');
+//      }
+//      return false;
+//    });
+//
+//    socket.on('userchat message', function(msg){
+//      if((msg.user_id_1 === user_id) || (msg.user_id_2 === user_id)){
+//        $('<li/>', {
+//          id: msg.user_id_1+'_'+msg.user_id_2,
+//          text: msg.message
+//        }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id);
+//        $('<img/>', {
+//          src: 'data/avatars/s/0/'+msg.user_id_1+'.jpg'
+//        }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
+//        $('<span/>', {
+//          text: msg.username
+//        }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
+//      }
+//    });
+//
+//    $.get(
+//      'http://localhost:3000/userchatmsgs/'+user_id+'/'+with_user_id, {}, function(data, textStatus, jqXHR ) {
+//      var userChatMsgs = data;
+//      if(userChatMsgs){
+//        for(i in userChatMsgs){
+//          $('<li/>', {
+//            text: userChatMsgs[i].message
+//          }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id);
+//          $('<img/>', {
+//            src: 'data/avatars/s/0/'+userChatMsgs[i].user_id+'.jpg'
+//                    }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
+//                    $('<span/>', {
+//                     text: userChatMsgs[i].username
+//                 }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
+//                 }    
+//               }
+//             });
+           
      
      return false;
 }

@@ -1,12 +1,25 @@
 var express = require('express');
 var app = express();
+var connection  = require('express-myconnection'); 
+var mysql = require('mysql');
 var path = require('path');
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var dbMod = require('./db.js');
+var userMod = require('./users.js');
 var ObjectID = require('mongodb').ObjectID;
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(
+    connection(mysql,{
+        host: 'localhost',
+        user: 'xenforo',
+        password : 'xenforo',
+        port : 3306, 
+        database:'xenforo'
+    },'pool')
+);
 
 app.get('/messages/:id', function(req, res){
   var chatroom_id = req.params.id;
@@ -34,11 +47,28 @@ app.get('/chatroom/:id', function(req, res){
   });
 });
 
+app.get('/userchat/:id', function(req, res){
+  var chatroom_id = req.params.id;
+  dbMod.getChatroom({ "_id": new ObjectID(chatroom_id)}, function(err, chatroom) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.send(chatroom);  
+  });
+});
+
+app.get('/online_users', function(req, res){
+  userMod.getOnlineUsers('SELECT * FROM xf_user AS user JOIN xf_session_activity AS activity ON (user.user_id = activity.user_id) WHERE activity.view_date > UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 300 SECOND))', req, function(err, users) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.send(users);  
+  });
+});
+
 io.on('connection', function(socket){
     
   socket.on('chat message', function(msg){
     io.emit('chat message', msg);
-    dbMod.saveMsg({ message: msg.message, user_id: msg.user_id, room_id: msg.room_id,  created_date: new Date().getTime() });
+    dbMod.saveMsg({ message: msg.message, user_id: msg.user_id, username: msg.username, room_id: msg.room_id,  created_date: new Date().getTime() });
   });
   
   socket.on('chat room', function(chatroom){
