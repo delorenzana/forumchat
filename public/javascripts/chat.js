@@ -88,7 +88,7 @@ function embedChatrooms(){
 
     socket.on('chat room', function(thechatroom){
       addChatroomToList(thechatroom);
-      showHideAddChatroom();
+      hideAddChatroom();
     });
     
     $('<div/>', {
@@ -132,14 +132,20 @@ function showHideChatrooms(){
       $('#add_chatroom_link').text('+');  
       $('#onlineusers').show();  
       
+      $('#online_users_list').empty();
+      
       $.get(
         'http://localhost:3000/online_users', {}, function(data, textStatus, jqXHR ) {
          if(textStatus === 'success'){
            onlineUsers = data;
-           if(onlineUsers){
+           if(onlineUsers.length > 1){
              for(i in onlineUsers){
                addOnlineUserToList(onlineUsers[i]);
              }    
+           }else{
+               $('<li/>', {
+                 text: "No one is available to chat."
+               }).appendTo('#online_users_list');
            }
            chatroomsLoaded = true; 
          }
@@ -150,6 +156,8 @@ function showHideChatrooms(){
        $('#add_chatroom').show();
        $('#add_chatroom_link').text('-');  
        $('#onlineusers').hide();  
+       $('#userchat').hide();
+       $('#chatroom').hide();
     }
 
    return false;
@@ -166,11 +174,20 @@ function showHideAddChatroom(){
     }else{
        $('#add_chatroom_link').text('+');  
     }
-
-    //$('#chatroom').remove();
-    //socket.removeListener('chat message');
              
    return false;
+}
+
+function hideAddChatroom(){
+    
+    $('#add_chatroom').hide();
+    $('#add_chatroom_link').text('+');  
+}
+
+function showAddChatroom(){
+    
+    $('#add_chatroom').show();
+    $('#add_chatroom_link').text('-');  
 }
 
 function addChatroomToList(thechatroom){
@@ -185,6 +202,18 @@ function addChatroomToList(thechatroom){
     }).appendTo('#'+thechatroom._id);
 }
 
+function addUserChatToList(userchat){
+    $('<li/>', {
+      id: userchat._id,
+    }).appendTo('#userchat_list');
+    
+     $('<a/>', {
+      text: userchat.with_user_id,
+      href: '',
+      onclick: "return showChatroom('"+userchat._id+"');"
+    }).appendTo('#'+userchat._id);
+}
+
 function addOnlineUserToList(theuser){
     if(theuser.user_id !== user_id){
       $('<li/>', {
@@ -194,7 +223,7 @@ function addOnlineUserToList(theuser){
       $('<a/>', {
         text: theuser.username,
         href: '',
-        onclick: "return showUserChat('"+theuser.user_id+"', '"+theuser.username+"');"
+        onclick: "return startUserChat("+theuser.user_id+", '"+theuser.username+"');"
       }).appendTo('#'+theuser.user_id);
     }   
 }
@@ -291,7 +320,17 @@ function showChatroom(thechatroom_id){
      return false;
 }
 
-function showUserChat(with_user_id, with_username){
+function startUserChat(with_user_id, with_username){
+    socket.emit('start user chat', { user_id: user_id, with_user_id: with_user_id });
+    
+    socket.on('start user chat', function(userchat){
+      showUserChat(userchat, with_username);
+    });
+    
+    return false;
+}
+
+function showUserChat(userchat, with_username){
      
     $('#userchat').remove();
     socket.removeListener('userchat message');
@@ -306,7 +345,7 @@ function showUserChat(with_user_id, with_username){
     }).appendTo('#userchat');
 
     $('<ul/>', {
-      id: 'userchatmsgs'+user_id+'-'+with_user_id,
+      id: 'userchatmsgs'+userchat._id,
       style: 'list-style-type:none'
     }).appendTo('#userchat');
 
@@ -324,49 +363,49 @@ function showUserChat(with_user_id, with_username){
       text: 'Send'
     }).appendTo('#userchat_form');
     
-//    $('#userchat_form').submit(function(){
-//      if($('#ucm').val()){
-//        socket.emit('userchat message', { message: $('#ucm').val(), user_id_1: user_id, user_id_2: with_user_id, username: username });
-//        $('#ucm').val('');
-//      }
-//      return false;
-//    });
-//
-//    socket.on('userchat message', function(msg){
-//      if((msg.user_id_1 === user_id) || (msg.user_id_2 === user_id)){
-//        $('<li/>', {
-//          id: msg.user_id_1+'_'+msg.user_id_2,
-//          text: msg.message
-//        }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id);
-//        $('<img/>', {
-//          src: 'data/avatars/s/0/'+msg.user_id_1+'.jpg'
-//        }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
-//        $('<span/>', {
-//          text: msg.username
-//        }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
-//      }
-//    });
-//
-//    $.get(
-//      'http://localhost:3000/userchatmsgs/'+user_id+'/'+with_user_id, {}, function(data, textStatus, jqXHR ) {
-//      var userChatMsgs = data;
-//      if(userChatMsgs){
-//        for(i in userChatMsgs){
-//          $('<li/>', {
-//            text: userChatMsgs[i].message
-//          }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id);
-//          $('<img/>', {
-//            src: 'data/avatars/s/0/'+userChatMsgs[i].user_id+'.jpg'
-//                    }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
-//                    $('<span/>', {
-//                     text: userChatMsgs[i].username
-//                 }).appendTo('#userchatmsgs'+user_id+'-'+with_user_id).last();
-//                 }    
-//               }
-//             });
-           
-     
-     return false;
+    $('#userchat_form').submit(function(){
+      if($('#ucm').val()){
+        socket.emit('userchat message', { private_chat_id: userchat._id, message: $('#ucm').val(), user_id: user_id, username: username, with_user_id: userchat.with_user_id });
+        $('#ucm').val('');
+      }
+      return false;
+    });
+
+    socket.on('userchat message', function(msg){
+      if(msg.private_chat_id === userchat._id){
+        $('<li/>', {
+          id: msg._id,
+          text: msg.message
+        }).appendTo('#userchatmsgs'+userchat._id);
+        $('<img/>', {
+          src: 'data/avatars/s/0/'+msg.user_id+'.jpg'
+        }).appendTo('#userchatmsgs'+userchat._id).last();
+        $('<span/>', {
+          text: msg.username
+        }).appendTo('#userchatmsgs'+userchat._id).last();
+      }
+    });
+    
+    
+
+    $.get(
+      'http://localhost:3000/userchatmsgs/'+userchat._id, {}, function(data, textStatus, jqXHR ) {
+      var userChatMsgs = data;
+      if(userChatMsgs){
+        $('#userchatmsgs'+userchat._id).empty();
+        for(i in userChatMsgs){
+          $('<li/>', {
+            text: userChatMsgs[i].message
+          }).appendTo('#userchatmsgs'+userchat._id);
+          $('<img/>', {
+            src: 'data/avatars/s/0/'+userChatMsgs[i].user_id+'.jpg'
+           }).appendTo('#userchatmsgs'+userchat._id).last();
+          $('<span/>', {
+            text: userChatMsgs[i].username
+          }).appendTo('#userchatmsgs'+userchat._id).last();
+        }    
+      }
+      });
 }
 
 

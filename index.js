@@ -64,6 +64,15 @@ app.get('/online_users', function(req, res){
   });
 });
 
+app.get('/userchatmsgs/:id', function(req, res){
+  var userchat_id = req.params.id;
+  dbMod.getPrivateMsgs({ private_chat_id: userchat_id }, function(err, messages) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.send(messages);   
+  });
+});
+
 io.on('connection', function(socket){
     
   socket.on('chat message', function(msg){
@@ -79,6 +88,21 @@ io.on('connection', function(socket){
         io.emit('chat room', newchatroom);
       }
     });
+  });
+  
+  socket.on('start user chat', function(userchat){
+    dbMod.savePrivateChat({ user_id: userchat.user_id, with_user_id: userchat.with_user_id,  created_date: new Date().getTime() }, function(err, newuserchat) {
+      if(err){
+        console.log('error start user chat');    
+      }else{
+        io.emit('start user chat', newuserchat);
+      }
+    });
+  });
+  
+  socket.on('userchat message', function(msg){
+    io.emit('userchat message', msg);
+    dbMod.savePrivateMsg({ private_chat_id: msg.private_chat_id, message: msg.message, user_id: msg.user_id, username: msg.username, with_user_id: msg.with_user_id,  created_date: new Date().getTime() });
   });
   
 });

@@ -30,6 +30,30 @@ function saveChatroom(query, callback){
   });
 }
 
+function savePrivateChat(query, callback){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("privatechats");
+    
+    // check if it exists
+    collection.findOne({ $or: [ { user_id: query.user_id, with_user_id: query.with_user_id }, { user_id: query.with_user_id, with_user_id: query.user_id } ] }, function(err, privatechat){
+      if(!privatechat || err){
+        // create new one
+        collection.insert(query, function(err) {
+        if(err){
+          callback(true);
+        }else{
+          callback(false, query);   
+        }
+          db.close();
+        });
+      }else{
+        callback(false, privatechat);   
+      }
+    });
+  });
+}
+
 function getChatrooms(query, callback){
   startDb();
   db.open(function(err, db) {
@@ -68,6 +92,14 @@ function saveMsg(msg){
   });
 }
 
+function savePrivateMsg(msg){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("privatemessages");
+      collection.insert(msg);
+  });
+}
+
 function getMsgs(query, callback){
   startDb();
   db.open(function(err, db) {
@@ -83,9 +115,27 @@ function getMsgs(query, callback){
   });
 }
 
+function getPrivateMsgs(query, callback){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("privatemessages");
+    collection.find(query).toArray(function(err, messages) {
+       if(!messages || err){
+        callback(true);
+       }else{
+        callback(false, messages);   
+       }
+        db.close();
+      });
+  });
+}
+
 module.exports.startDb = startDb;
 module.exports.saveMsg = saveMsg;
+module.exports.savePrivateMsg = savePrivateMsg;
 module.exports.getMsgs = getMsgs;
+module.exports.getPrivateMsgs = getPrivateMsgs;
 module.exports.saveChatroom = saveChatroom;
+module.exports.savePrivateChat = savePrivateChat;
 module.exports.getChatrooms = getChatrooms;
 module.exports.getChatroom = getChatroom;
