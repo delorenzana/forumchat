@@ -14,7 +14,7 @@ Chat example
     <script type="text/javascript" src="<path-to-plugin-domain>/public/javascripts/chat.js"></script>
     <script type="text/javascript">
       $(function(){
-        $('#chat').initChat(<username>, <user_id>);
+        $('#chat').initChat(<username>, <user_id>, <is_moderator>);
       });
     </script>
     ```
