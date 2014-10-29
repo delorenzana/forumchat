@@ -1,4 +1,5 @@
 var chatroom = null;
+var user = null;
 var username = null;
 var user_id = null;
 var is_moderator = false;
@@ -6,29 +7,32 @@ var currentMsgs = null;
 var currentChatrooms = null;
 var chatroomsLoaded = false;
 var onlineUsers = null;
+var avatar = null;
 var socket = null;
 
-$.fn.initChat = function(the_username, the_user_id, user_is_moderator){
+$.fn.initChat = function(the_username, the_user_id, user_is_moderator, the_avatar){
     
     username = the_username;
     user_id = the_user_id;
     is_moderator = user_is_moderator;
-    
-    //console.log(is_moderator);
+    avatar = the_avatar;
     
     socket = io('http://localhost:3000');
     
-     $('<a/>', {
-      text: 'Chat',
-      href: '',
-      onclick: 'return showHideChatrooms();'
-    }).appendTo('#chat');
+           $('<div/>', {
+             id: 'chatpopup'
+           }).appendTo('#chat');
     
-//    $('<img/>', {
-//      src: 'data/avatars/s/0/'+user_id+'.jpg'
-//    }).appendTo('#chat');
+           $('<a/>', {
+             text: 'Chat',
+             href: '',
+             onclick: 'return showHideChatrooms();'
+           }).appendTo('#chatpopup');
     
-    embedChatrooms();
+           embedChatrooms();
+    
+    
+    
 }
 
 function embedChatrooms(){
@@ -36,7 +40,7 @@ function embedChatrooms(){
     $('<div/>', {
       id: 'chatrooms',
       style: 'display:none;padding:10px'
-    }).appendTo('#chat');
+    }).appendTo('#chatpopup');
     
      $('<h3/>', {
       text: 'Chat Rooms'
@@ -51,6 +55,7 @@ function embedChatrooms(){
       id: 'add_chatroom_link',
       text: '+',
       href: '',
+      title: 'Add a chatroom',
       onclick: 'return showHideAddChatroom();'
     }).appendTo('#chatrooms');
     
@@ -94,7 +99,7 @@ function embedChatrooms(){
     $('<div/>', {
       id: 'onlineusers',
       style: 'display:none;padding:10px'
-    }).appendTo('#chat');
+    }).appendTo('#chatpopup');
     
      $('<h3/>', {
       text: 'Online Users'
@@ -110,7 +115,13 @@ function embedChatrooms(){
 function showHideChatrooms(){
     
     if(!chatroomsLoaded){
-        $.get(
+        
+        $.post(
+        'http://localhost:3000/user', { user_id: user_id, username: username, is_moderator: is_moderator, avatar: avatar  }, function(data, textStatus, jqXHR ) {
+         if(textStatus === 'success'){
+           user = data;
+           
+           $.get(
         'http://localhost:3000/chatrooms', {}, function(data, textStatus, jqXHR ) {
          if(textStatus === 'success'){
            currentChatrooms = data;
@@ -123,6 +134,17 @@ function showHideChatrooms(){
          }
        }
      );
+           
+           
+         }else{
+            console.log('error');
+         }
+         
+         
+        }
+        );
+     
+        
     }
     
     $('#chatrooms').toggle();
@@ -147,7 +169,7 @@ function showHideChatrooms(){
                  text: "No one is available to chat."
                }).appendTo('#online_users_list');
            }
-           chatroomsLoaded = true; 
+           
          }
        }
      );
@@ -169,6 +191,7 @@ function showHideAddChatroom(){
     
     if($('#add_chatroom').is(':visible')){
        $('#add_chatroom_link').text('-');  
+       $('#add_chatroom form input').focus();
        $('#chatroom').remove();
        socket.removeListener('chat message');
     }else{
@@ -242,9 +265,9 @@ function showChatroom(thechatroom_id){
              $('<div/>', {
                id: 'chatroom',
                style: 'padding:10px'
-             }).appendTo('#chat');
+             }).appendTo('#chatrooms');
     
-             $('<p/>', {
+             $('<h3/>', {
                text: chatroom.name
              }).appendTo('#chatroom');
 
@@ -258,9 +281,8 @@ function showChatroom(thechatroom_id){
                id: 'chat_form'
              }).appendTo('#chatroom');
 
-             $('<input/>', {
-               id: 'm',
-               autocomplete: 'off'
+             $('<textarea/>', {
+               id: 'm'
              }).appendTo('#chat_form');
 
              $('<button/>', {
@@ -277,16 +299,18 @@ function showChatroom(thechatroom_id){
 
              socket.on('chat message', function(msg){
                if(msg.room_id === chatroom._id){
-                 $('<li/>', {
-                     id: msg.room_id+'_'+i,
-                     text: msg.message
-                 }).appendTo('#msgs'+chatroom._id);
-                 $('<img/>', {
+                   
+                   $('<li/>', {}).prependTo('#msgs'+chatroom._id).append($('<img/>', {
                      src: 'data/avatars/s/0/'+msg.user_id+'.jpg'
-                 }).appendTo('#msgs'+chatroom._id).last();
-                 $('<span/>', {
+                    })).append($('<span/>', {
                      text: msg.username
-                 }).appendTo('#msgs'+chatroom._id).last();
+                 })).append($('<p/>', {
+                     text: msg.message
+                    }));
+                    
+                 
+                 
+                 $('#msgs'+chatroom._id).scrollTop($('#msgs'+chatroom._id).length);
                }
              });
 
@@ -295,18 +319,20 @@ function showChatroom(thechatroom_id){
                currentMsgs = data;
                if(currentMsgs){
                  for(i in currentMsgs){
-                   $('<li/>', {
-                     text: currentMsgs[i].message
-                    }).appendTo('#msgs'+chatroom._id);
-                   $('<img/>', {
+                     
+                   $('<li/>', {}).appendTo('#msgs'+chatroom._id).append($('<img/>', {
                      src: 'data/avatars/s/0/'+currentMsgs[i].user_id+'.jpg'
-                    }).appendTo('#msgs'+chatroom._id).last();
-                    $('<span/>', {
+                    })).append($('<span/>', {
                      text: currentMsgs[i].username
-                 }).appendTo('#msgs'+chatroom._id).last();
+                 })).append($('<p/>', {
+                     text: currentMsgs[i].message
+                    }));
+             
                  }    
                }
              });
+             
+             $('#chatroom form textarea').focus();
            } 
          }
        }
@@ -338,7 +364,7 @@ function showUserChat(userchat, with_username){
     $('<div/>', {
       id: 'userchat',
       style: 'padding:10px'
-    }).appendTo('#chat');
+    }).appendTo('#onlineusers');
     
     $('<p/>', {
       text: with_username
@@ -354,7 +380,7 @@ function showUserChat(userchat, with_username){
       id: 'userchat_form'
     }).appendTo('#userchat');
 
-    $('<input/>', {
+    $('<textarea/>', {
       id: 'ucm',
       autocomplete: 'off'
     }).appendTo('#userchat_form');
@@ -373,16 +399,17 @@ function showUserChat(userchat, with_username){
 
     socket.on('userchat message', function(msg){
       if(msg.private_chat_id === userchat._id){
-        $('<li/>', {
-          id: msg._id,
-          text: msg.message
-        }).appendTo('#userchatmsgs'+userchat._id);
-        $('<img/>', {
-          src: 'data/avatars/s/0/'+msg.user_id+'.jpg'
-        }).appendTo('#userchatmsgs'+userchat._id).last();
-        $('<span/>', {
-          text: msg.username
-        }).appendTo('#userchatmsgs'+userchat._id).last();
+          
+        $('<li/>', {}).prependTo('#userchatmsgs'+userchat._id).append($('<img/>', {
+                     src: 'data/avatars/s/0/'+msg.user_id+'.jpg'
+                    })).append($('<span/>', {
+                     text: msg.username
+                 })).append($('<p/>', {
+                     text: msg.message
+                    }));
+                    
+                    $('#userchatmsgs'+userchat._id).scrollTop($('#userchatmsgs'+userchat._id).length);
+        
       }
     });
     
@@ -394,18 +421,19 @@ function showUserChat(userchat, with_username){
       if(userChatMsgs){
         $('#userchatmsgs'+userchat._id).empty();
         for(i in userChatMsgs){
-          $('<li/>', {
-            text: userChatMsgs[i].message
-          }).appendTo('#userchatmsgs'+userchat._id);
-          $('<img/>', {
-            src: 'data/avatars/s/0/'+userChatMsgs[i].user_id+'.jpg'
-           }).appendTo('#userchatmsgs'+userchat._id).last();
-          $('<span/>', {
-            text: userChatMsgs[i].username
-          }).appendTo('#userchatmsgs'+userchat._id).last();
+            
+            $('<li/>', {}).appendTo('#userchatmsgs'+userchat._id).append($('<img/>', {
+                     src: 'data/avatars/s/0/'+userChatMsgs[i].user_id+'.jpg'
+                    })).append($('<span/>', {
+                     text: userChatMsgs[i].username
+                 })).append($('<p/>', {
+                     text: userChatMsgs[i].message
+                    })); 
         }    
       }
       });
+      
+      $('#userchat form textarea').focus();
 }
 
 

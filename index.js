@@ -1,25 +1,29 @@
 var express = require('express');
 var app = express();
 var connection  = require('express-myconnection'); 
-var mysql = require('mysql');
+//var mysql = require('mysql');
 var path = require('path');
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var dbMod = require('./db.js');
-var userMod = require('./users.js');
+//var userMod = require('./users.js');
 var ObjectID = require('mongodb').ObjectID;
+var bodyParser = require('body-parser');
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(
-    connection(mysql,{
-        host: 'localhost',
-        user: 'xenforo',
-        password : 'xenforo',
-        port : 3306, 
-        database:'xenforo'
-    },'pool')
-);
+//app.use(
+//    connection(mysql,{
+//        host: 'localhost',
+//        user: 'xenforo',
+//        password : 'xenforo',
+//        port : 3306, 
+//        database:'xenforo'
+//    },'pool')
+//);
 
 app.get('/messages/:id', function(req, res){
   var chatroom_id = req.params.id;
@@ -56,11 +60,36 @@ app.get('/userchat/:id', function(req, res){
   });
 });
 
+//app.get('/online_users', function(req, res){
+//  userMod.getOnlineUsers('SELECT * FROM xf_user AS user JOIN xf_session_activity AS activity ON (user.user_id = activity.user_id) WHERE activity.view_date > UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 300 SECOND))', req, function(err, users) {
+//    res.header("Access-Control-Allow-Origin", "*");
+//    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+//    res.send(users);  
+//  });
+//});
+
 app.get('/online_users', function(req, res){
-  userMod.getOnlineUsers('SELECT * FROM xf_user AS user JOIN xf_session_activity AS activity ON (user.user_id = activity.user_id) WHERE activity.view_date > UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 300 SECOND))', req, function(err, users) {
+  var now = new Date().getTime();
+  dbMod.getOnlineUsers({ last_online: { $gt: (now-100000) } }, function(err, users) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "X-Requested-With");
     res.send(users);  
+  });
+});
+
+app.post('/user', function(req, res){
+  var user_id = parseInt(req.body.user_id);
+  var username = req.body.username;
+  var is_moderator = parseInt(req.body.is_moderator);
+  var avatar = req.body.avatar;
+//  var user_id = 1;
+//  var username = 'admin';
+//  var is_moderator = 1;
+//  var avatar = 'data/avatars/s/0/1.jpg';
+  dbMod.saveUser({ user_id: user_id, username: username, is_moderator: is_moderator, avatar: avatar, last_online: new Date().getTime() }, function(err, user) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.send(user);
   });
 });
 

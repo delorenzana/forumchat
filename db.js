@@ -34,11 +34,8 @@ function savePrivateChat(query, callback){
   startDb();
   db.open(function(err, db) {
     var collection = db.collection("privatechats");
-    
-    // check if it exists
     collection.findOne({ $or: [ { user_id: query.user_id, with_user_id: query.with_user_id }, { user_id: query.with_user_id, with_user_id: query.user_id } ] }, function(err, privatechat){
       if(!privatechat || err){
-        // create new one
         collection.insert(query, function(err) {
         if(err){
           callback(true);
@@ -104,7 +101,7 @@ function getMsgs(query, callback){
   startDb();
   db.open(function(err, db) {
     var collection = db.collection("messages");
-    collection.find(query).toArray(function(err, messages) {
+    collection.find(query).sort({ created_date: -1 }).toArray(function(err, messages) {
        if(!messages || err){
         callback(true);
        }else{
@@ -119,11 +116,54 @@ function getPrivateMsgs(query, callback){
   startDb();
   db.open(function(err, db) {
     var collection = db.collection("privatemessages");
-    collection.find(query).toArray(function(err, messages) {
+    collection.find(query).sort({ created_date: -1 }).toArray(function(err, messages) {
        if(!messages || err){
         callback(true);
        }else{
         callback(false, messages);   
+       }
+        db.close();
+      });
+  });
+}
+
+function saveUser(query, callback){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("users");
+    collection.findOne({ user_id: query.user_id }, function(err, user){
+      if(!user || err){
+        collection.insert(query, function(err) {
+        if(err){
+          callback(true);
+        }else{
+          callback(false, query);   
+        }
+          db.close();
+        });
+      }else{
+        collection.update({ user_id: query.user_id }, { $set: { username: query.username, is_moderator: query.is_moderator, avatar: query.avatar, last_online: query.last_online } }, function(err) {
+        if(err){
+          callback(true);
+        }else{
+          callback(false, query);   
+        }
+          db.close();
+        }); 
+      }
+    });
+  });
+}
+
+function getOnlineUsers(query, callback){
+  startDb();
+  db.open(function(err, db) {
+    var collection = db.collection("users");
+    collection.find(query).toArray(function(err, users) {
+       if(!users || err){
+        callback(true);
+       }else{
+        callback(false, users);   
        }
         db.close();
       });
@@ -139,3 +179,5 @@ module.exports.saveChatroom = saveChatroom;
 module.exports.savePrivateChat = savePrivateChat;
 module.exports.getChatrooms = getChatrooms;
 module.exports.getChatroom = getChatroom;
+module.exports.saveUser = saveUser;
+module.exports.getOnlineUsers = getOnlineUsers;
