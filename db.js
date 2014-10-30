@@ -159,7 +159,7 @@ function getOnlineUsers(query, callback){
   startDb();
   db.open(function(err, db) {
     var collection = db.collection("users");
-    collection.find(query).toArray(function(err, users) {
+    collection.find(query).sort({ username: -1 }).toArray(function(err, users) {
        if(!users || err){
         callback(true);
        }else{

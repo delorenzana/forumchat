@@ -14,7 +14,7 @@ Chat example
     <script type="text/javascript" src="<path-to-plugin-domain>/public/javascripts/chat.js"></script>
     <script type="text/javascript">
       $(function(){
-        $('#chat').initChat(<username>, <user_id>, <is_moderator>);
+        $('#chat').initChat({ username: '<username>', user_id: <user_id>, is_moderator: <is_moderator>, avatar: <avatar>, online_seconds: <online_seconds> });
       });
     </script>
     ```
@@ -37,7 +37,7 @@ Chat example
           <script type="text/javascript" src="<path-to-plugin-domain>/public/javascripts/chat.js"></script>
           <script type="text/javascript">
             $(function(){
-              $('#chat').initChat('{$visitor.username}', {$visitor.user_id}, {$visitor.is_moderator});
+              $('#chat').initChat({ username: '{$visitor.username}', user_id: {$visitor.user_id}, is_moderator: {$visitor.is_moderator}, avatar: 'data/avatars/s/0/'+{$visitor.user_id}+'.jpg', online_seconds: 300 });
             });
           </script>
         </xen:if>

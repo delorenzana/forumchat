@@ -68,9 +68,10 @@ app.get('/userchat/:id', function(req, res){
 //  });
 //});
 
-app.get('/online_users', function(req, res){
+app.get('/online_users/:online_seconds', function(req, res){
+  var online_seconds = req.params.online_seconds;
   var now = new Date().getTime();
-  dbMod.getOnlineUsers({ last_online: { $gt: (now-100000) } }, function(err, users) {
+  dbMod.getOnlineUsers({ last_online: { $gt: (now-online_seconds*1000) } }, function(err, users) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "X-Requested-With");
     res.send(users);  
@@ -132,6 +133,10 @@ io.on('connection', function(socket){
   socket.on('userchat message', function(msg){
     io.emit('userchat message', msg);
     dbMod.savePrivateMsg({ private_chat_id: msg.private_chat_id, message: msg.message, user_id: msg.user_id, username: msg.username, with_user_id: msg.with_user_id,  created_date: new Date().getTime() });
+  });
+  
+  socket.on('user login', function(user){
+    io.emit('user login', user);
   });
   
 });
