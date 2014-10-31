@@ -24,8 +24,15 @@ Chat example
         ```
         <div id="chat"></div>
         ```
-    2. In "footer" template, add the following xenforo script where you want to add your chat box when user is logged-in.
+    2. In "PAGE_CONTAINER" template, add the following xenforo scripts: 
+        your chat stylesheet
         ```
+        <xen:if is="{$visitor.user_id}">
+          <link type="text/css" rel="stylesheet" media="all" href="<path-to-plugin-domain>/public/css/chat.css" charset="utf-8" />
+        </xen:if>
+       ```
+       where you want to add your chat box when user is logged-in.
+       ```
         <xen:if is="{$visitor.user_id}">
           <xen:include template="chatbar" />
          </xen:if>

@@ -35,6 +35,11 @@
     color: #fff;
 }
 
+#chatpopup a.active
+{
+    color: #f00;
+}
+
 #chatrooms, #onlineusers
 {
     background-color: #6d84b4;

@@ -276,14 +276,12 @@ function addOnlineUserToList(theuser){
           text: theuser.username,
           href: '',
           onclick: "return startUserChat("+theuser.user_id+", '"+theuser.username+"');"
-        }).appendTo('#'+theuser.user_id).append($('<span/>', {
-                     text: ' (0)'
-                 }));
+        }).appendTo('#'+theuser.user_id);
       $('#onlineusers p').hide();
          
       }
       
-      $('#onlineusers h3 span').text(' ('+$('#onlineusers li').length+')');  
+      $('#onlineusers h3 span').text(' ('+$('#online_users_list li').length+')');  
     }   
 }
 
@@ -404,8 +402,9 @@ function showUserChat(userchat, with_username){
     socket.removeListener('start user chat');
     socket.removeListener('userchat message');
     
-    $('#online_users_list').find('#'+userchat.with_user_id+' span').text(' (0)');
-    console.log(userchat.with_user_id);
+    $('#online_users_list').find('#'+userchat.user_id+' a').removeClass('active');
+    $('#online_users_list').find('#'+userchat.with_user_id+' a').removeClass('active');
+   
              
     $('<div/>', {
       id: 'userchat',
@@ -459,7 +458,8 @@ function showUserChat(userchat, with_username){
                     
                     //console.log(userchat._id);
                     
-                    $('#online_users_list').find('#'+msg.user_id+' span').text(' (1)');
+                    //$('#online_users_list').find('#'+msg.user_id+' a').addClass('active');
+                    $('#online_users_list').find('#'+msg.user_id+' a').addClass('active');
         
       }
     });
