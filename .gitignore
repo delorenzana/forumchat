@@ -1,3 +1,4 @@
 /nbproject
 /node_modules
-/data
+/chat/node_modules
+/chat/data

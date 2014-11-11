@@ -1,0 +1,20 @@
+{
+  "name": "freedom-network-apps",
+  "version": "1.0.0",
+  "description": "freedom network apps",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "freedom",
+    "apps",
+    "nodejs"
+  ],
+  "author": "Dennis Lorenzana",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.10.1",
+    "express-generator": "^4.9.0"
+  }
+}
