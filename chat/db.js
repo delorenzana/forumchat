@@ -1,15 +1,15 @@
 var Db = require('mongodb').Db,
-    MongoClient = require('mongodb').MongoClient,
-    Server = require('mongodb').Server,
-    ReplSetServers = require('mongodb').ReplSetServers,
-    ObjectID = require('mongodb').ObjectID,
-    Binary = require('mongodb').Binary,
-    GridStore = require('mongodb').GridStore,
-    Grid = require('mongodb').Grid,
-    Code = require('mongodb').Code,
-    BSON = require('mongodb').pure().BSON,
-    assert = require('assert');
-    db = null;
+  MongoClient = require('mongodb').MongoClient,
+  Server = require('mongodb').Server,
+  ReplSetServers = require('mongodb').ReplSetServers,
+  ObjectID = require('mongodb').ObjectID,
+  Binary = require('mongodb').Binary,
+  GridStore = require('mongodb').GridStore,
+  Grid = require('mongodb').Grid,
+  Code = require('mongodb').Code,
+  BSON = require('mongodb').pure().BSON,
+  assert = require('assert'),
+  db = null;
     
 function startDb(){
   db = new Db('chat', new Server('localhost', 27017), {safe:false});
@@ -18,15 +18,23 @@ function startDb(){
 function saveChatroom(query, callback){
   startDb();
   db.open(function(err, db) {
+    query.user_id = parseInt(query.user_id);
+    query.created_at = new Date().getTime();
     var collection = db.collection("chatrooms");
-    collection.insert(query, function(err) {
-       if(err){
+    collection.findOne({ name: query.name }, function(err, chatroom){
+      if(!chatroom || err){
+        collection.insert(query, function(err) {
+        if(err){
+          callback(true);
+        }else{
+          callback(false, query);   
+        }
+          db.close();
+        });
+      }else{
         callback(true);
-       }else{
-        callback(false, query);   
-       }
-        db.close();
-      });
+      }
+    });
   });
 }
 
@@ -84,11 +92,20 @@ function getChatroom(query, callback){
 }
 
 
-function saveMsg(msg){
+function saveChatroomMsg(msg, callback){
   startDb();
   db.open(function(err, db) {
-    var collection = db.collection("messages");
-      collection.insert(msg);
+    msg.user_id = parseInt(msg.user_id);
+    msg.created_at = new Date().getTime();
+    var collection = db.collection("chatroommessages");
+      collection.insert(msg, function(err) {
+        if(err){
+          callback(true);
+        }else{
+          callback(false, msg);   
+        }
+          db.close(); 
+      });
   });
 }
 
@@ -97,6 +114,7 @@ function savePrivateMsg(msg, callback){
   db.open(function(err, db) {
     msg.user_id = parseInt(msg.user_id);
     msg.with_user_id = parseInt(msg.with_user_id);
+    msg.created_at = new Date().getTime();
     var collection = db.collection("privatemessages");
       collection.insert(msg, function(err) {
         if(err){
@@ -109,10 +127,10 @@ function savePrivateMsg(msg, callback){
   });
 }
 
-function getMsgs(query, callback){
+function getChatroomMsgs(query, callback){
   startDb();
   db.open(function(err, db) {
-    var collection = db.collection("messages");
+    var collection = db.collection("chatroommessages");
     collection.find(query).sort({ created_date: -1 }).toArray(function(err, messages) {
        if(!messages || err){
         callback(true);
@@ -220,9 +238,9 @@ function getOnlineUsers(query, callback){
 }
 
 module.exports.startDb = startDb;
-module.exports.saveMsg = saveMsg;
+module.exports.saveChatroomMsg = saveChatroomMsg;
 module.exports.savePrivateMsg = savePrivateMsg;
-module.exports.getMsgs = getMsgs;
+module.exports.getChatroomMsgs = getChatroomMsgs;
 module.exports.getPrivateMsgs = getPrivateMsgs;
 module.exports.saveChatroom = saveChatroom;
 module.exports.savePrivateChat = savePrivateChat;

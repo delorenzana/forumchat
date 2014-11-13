@@ -26,6 +26,15 @@ io.on('connection', function(socket){
   socket.on('send_private_msg', function(obj){
     io.emit('send_private_msg', obj);
   });
+  socket.on('add_chatroom', function(obj){
+    io.emit('add_chatroom', obj);
+  });
+  socket.on('add_chatroom_to_list', function(obj){
+    io.emit('add_chatroom_to_list', obj);
+  });
+  socket.on('send_chatroom_msg', function(obj){
+    io.emit('send_chatroom_msg', obj);
+  });
 });
 
 var server = http.listen(app.get('port'), function() {

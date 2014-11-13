@@ -19,6 +19,7 @@ $.fn.initChat = function(options){
 }
 
 function ChatBar() {
+  var self = this;
   this.init = function(options){
     online_seconds = options.online_seconds;
     delete options.online_seconds;
@@ -26,22 +27,22 @@ function ChatBar() {
   }
   
   this.setUser = function(options){
-    var self = this;
-    doPost('/init', options, function(data){ 
+    this.doPost('/init', options, function(data){ 
       user = data;
       self.displayBar();
+      if(user.available){
+        self.displayOnlineUsers();
+      }
       self.setListeners();
     });
   };
   
   this.updateUser = function(){
-    doPost('/user', user, function(data){
-      // data
+    this.doPost('/user', user, function(data){
     });
   };
   
   this.setListeners = function(){
-    var self = this;
     socket.on('chat_switched', function(obj){
       if(obj.user_id === user.user_id){
         user.available = obj.status ? 1:0;
@@ -54,18 +55,32 @@ function ChatBar() {
       }
     });
     socket.on('user_login', function(user){
-      addOnlineUserToList(user); 
+      self.addOnlineUserToList(user); 
     });
     socket.on('user_logout', function(user){
-      removeOnlineUserFromList(user); 
+      self.removeOnlineUserFromList(user); 
     });
     socket.on('start_private_chat', function(privatechat){
       showUserChat(privatechat);
     });
     socket.on('send_private_msg', function(obj){
-      addMsgToPrivateChat(obj);
+      self.addMsgToPrivateChat(obj);
       if(obj.user_id === user.user_id){
-        sendPrivateMsg(obj);
+        self.sendPrivateMsg(obj);
+      }
+    });
+    socket.on('add_chatroom', function(obj){
+      if(obj.user_id === user.user_id){
+        self.sendChatroom(obj);
+      }
+    });
+    socket.on('add_chatroom_to_list', function(obj){
+      self.addChatroomToList(obj);
+    });
+    socket.on('send_chatroom_msg', function(obj){
+      self.addMsgToChatroomChat(obj);
+      if(obj.user_id === user.user_id){
+        self.sendChatroomMsg(obj);
       }
     });
   };
@@ -149,21 +164,15 @@ function ChatBar() {
       chatroomsLink.href = '';
       chatroomsLink.onclick = this.displayChatrooms;
       
-//    var chatroomsLinkImg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-//    
-//    chatroomsLink.appendChild(chatroomsLinkImg);
-      
     chatbarDiv.appendChild(chatroomsLink);
     
     if(user.available){
       open = true;
-      openChat();
+      this.openChat();
     }else{
       open = false;
-      closeChat();    
+      this.closeChat();    
     }
-    
-    countOnlineUsers();
     
     return false;
   }
@@ -181,7 +190,7 @@ function ChatBar() {
       onlineUsersList.id = 'online_users_list';
       onlineusersDiv.appendChild(onlineUsersList);
       
-      getOnlineUsers();
+      this.getOnlineUsers();
       
       onlineusersDiv.style.display = 'block';
     }else{
@@ -193,6 +202,7 @@ function ChatBar() {
       }
     }
     chatroomsDiv.style.display = 'none';
+    $('.chatroom_chat').hide();
     
     return false;
   }
@@ -206,216 +216,379 @@ function ChatBar() {
       chatroomsHeader.innerHTML = "Chatrooms";
       chatroomsDiv.appendChild(chatroomsHeader);
       chatroomsDiv.style.display = 'block';
+      
+      var chatroomsList = document.createElement("UL");
+      chatroomsList.id = 'chatrooms_list';
+      chatroomsDiv.appendChild(chatroomsList);
+      
+      self.getChatrooms();
+      
+      if(user.is_moderator){
+        var addChatroomLink = document.createElement("A");
+        addChatroomLink.id = "add_chatroom_link";
+        addChatroomLink.text = "+";
+        addChatroomLink.href = '';
+        addChatroomLink.onclick = function() { return self.toggleAddChatroomForm(); };
+      
+        chatroomsDiv.appendChild(addChatroomLink);
+        
+        var chatroomsError = document.createElement("P");
+        chatroomsError.id = 'add_chatroom_error';
+        chatroomsError.style.display = 'none';
+        chatroomsDiv.appendChild(chatroomsError);
+        
+        var addChatroomForm = document.createElement("FORM");
+        addChatroomForm.id = 'add_chatroom_form';
+        addChatroomForm.action = '';
+        addChatroomForm.style.display = 'none';
+        
+        var addChatroomFormInput = document.createElement("INPUT");
+        addChatroomFormInput.id = 'add_chatroom_form_input';
+        addChatroomFormInput.type = 'text';
+       
+        addChatroomForm.appendChild(addChatroomFormInput); 
+        
+        var addChatroomFormButton = document.createElement("INPUT");
+        addChatroomFormButton.type = "submit";
+        addChatroomFormButton.value = 'Add';
+        
+        addChatroomForm.appendChild(addChatroomFormButton); 
+        
+        chatroomsDiv.appendChild(addChatroomForm);
+    
+        $('#add_chatroom_form').submit(function(){
+          if($('#add_chatroom_form_input').val()){
+            socket.emit('add_chatroom', { name: $('#add_chatroom_form_input').val(), user_id: user.user_id  });
+            $('#add_chatroom_form_input').val('');
+          }
+          return false;
+        });
+  
+        
+    
+      }
     }else{
       if(chatroomsDiv.style.display === 'none'){
         chatroomsDiv.style.display = 'block';
+        
       }else{
         chatroomsDiv.style.display = 'none';
+        $('.chatroom_chat').hide();
       }
     }
     onlineusersDiv.style.display = 'none';
+    $('#private_chat').hide();
     
     return false;
+  }
+  
+  this.toggleAddChatroomForm = function(){
+    $('#add_chatroom_form').toggle();
+    
+    if($('#add_chatroom_form').is(':visible')){
+      $('#add_chatroom_link').text("-");
+    }else{
+      $('#add_chatroom_link').text("+");
+      $('#add_chatroom_error').text("");
+      $('#add_chatroom_error').hide();
+    }
+    
+    return false;  
+  }
+  
+  this.addChatroomToList = function(obj){
+    var chatroomsList = document.getElementById('chatrooms_list');
+    var last_tab_index = $('#chatroomsList li').last().attr('tabindex');
+    
+    if(chatroomsList){
+      var chatroomItem = document.createElement("LI");
+//      chatroomItem.id = obj.user_id;
+        
+      var chatroomItemLink = document.createElement("A");
+      chatroomItemLink.text = obj.name;
+      chatroomItemLink.href = '';
+      chatroomItemLink.onclick = function() { return self.startChatroom(obj) };
+      
+      chatroomItem.appendChild(chatroomItemLink);
+    
+      chatroomsList.appendChild(chatroomItem); 
+    }
+  }
+  
+  this.startChatroom = function(chatroom){
+    $('#chatroom_chat').show();
+    $('.chatroom_chat').hide();
+  
+    var chatroomchatDiv = document.getElementById('chatroom_chat');
+  
+    if($('#chatroom_chat').find('#'+chatroom._id).length === 0){
+      var chatroomchatBlock = document.createElement("DIV");
+      chatroomchatBlock.id = chatroom._id;
+      chatroomchatBlock.className = 'chatroom_chat';
+  
+      chatroomchatDiv.appendChild(chatroomchatBlock);
+    
+      var chatroomchatHeader = document.createElement("p");
+      chatroomchatHeader.innerHTML = chatroom.name;
+    
+      chatroomchatBlock.appendChild(chatroomchatHeader);
+    
+      var chatroomchatMsgs = document.createElement("UL");
+      chatroomchatMsgs.id = 'chatroom_chat_msgs_'+chatroom._id;
+    
+      chatroomchatBlock.appendChild(chatroomchatMsgs);
+  
+      var chatroomchatForm = document.createElement("FORM");
+      chatroomchatForm.id = 'chatroom_chat_form_'+chatroom._id;
+      chatroomchatForm.action = '';
+  
+      chatroomchatBlock.appendChild(chatroomchatForm);
+    
+      $('<textarea/>', {
+        id: 'cc_msg_'+chatroom._id,
+        keypress: function(event) {
+          if (event.which == 13) {
+            event.preventDefault();
+            $('#chatroom_chat_form_'+chatroom._id).submit();
+          }
+        }
+      }).appendTo('#chatroom_chat_form_'+chatroom._id);
+    
+      $('#chatroom_chat_form_'+chatroom._id).submit(function(){
+        if($('#cc_msg_'+chatroom._id).val()){
+          socket.emit('send_chatroom_msg', { chatroom_id: chatroom._id, message: $('#cc_msg_'+chatroom._id).val(), user_id: user.user_id, avatar: user.avatar, username: user.username });
+          $('#cc_msg_'+chatroom._id).val('');
+        }
+        return false;
+      });
+    }else{
+      $('#chatroom_chat').find('#'+chatroom._id).show(); 
+    }
+  
+    $('#chatroom_chat_msgs_'+chatroom._id).empty();
+    this.getChatroomChatMsgs(chatroom._id);
+    return false;  
   }
   
   this.switchChat = function(){
     if(open){
       open = false;
-      closeChat();
+      self.closeChat();
       socket.emit('user_logout', user);
     }else{
       open = true;
-      openChat();
+      self.openChat();
+      self.displayOnlineUsers();
     }
     
     socket.emit('chat_switched', { user_id: user.user_id, status: open });
     
     return false;
   }
-}
-
-function openChat(){
-  var chat_container = document.getElementById(chat_container_id);
-  var chatLink = document.getElementById('chat_link');
-  var chatroomsLink = document.getElementById('chatrooms_link');
-  var switchLink = document.getElementById('chat_switch_link');
-    
-  chat_container.style.width = '400px';
-  switchLink.className = 'open_chat';
-  chatLink.style.display = 'block';
-  chatroomsLink.style.display = 'block';
   
-  socket.emit('user_login', user);
-}
-  
-function closeChat(){
-  var chat_container = document.getElementById(chat_container_id);
-  var chatroomsDiv = document.getElementById('chatrooms');
-  var onlineusersDiv = document.getElementById('online_users');
-  var chatLink = document.getElementById('chat_link');
-  var chatroomsLink = document.getElementById('chatrooms_link');
-  var switchLink = document.getElementById('chat_switch_link');
+  this.openChat = function(){
+    var chat_container = document.getElementById(chat_container_id);
+    var chatLink = document.getElementById('chat_link');
+    var chatroomsLink = document.getElementById('chatrooms_link');
+    var switchLink = document.getElementById('chat_switch_link');
     
-  chat_container.style.width = '35px';
-  chatroomsDiv.style.display = 'none';
-  onlineusersDiv.style.display = 'none';
-  chatLink.style.display = 'none';
-  chatroomsLink.style.display = 'none';
-  $('#private_chat').hide();
-  switchLink.className = 'close_chat'; 
-}
-
-function doPost(query_string, options, callback){
-  $.post(chat_domain+query_string, options, function(data, textStatus, jqXHR ) {
-    if(textStatus === 'success'){
-      callback(data);
-    }else{
-      callback(null);
-    }
-  }); 
-};
+    chat_container.style.width = '400px';
+    switchLink.className = 'open_chat';
+    chatLink.style.display = 'block';
+    chatroomsLink.style.display = 'block';
   
-function doGet(query_string, options, callback){
-  $.get(chat_domain+query_string, options, function(data, textStatus, jqXHR ) {
-    if(textStatus === 'success'){
-      callback(data);
-    }else{
-      callback(null);
-    }
-  }); 
-};
-
-function countOnlineUsers(){
-  doGet('/online_users/'+online_seconds, {}, function(data){
-    $('#chat_link span').text(' ('+(data.length-1)+')'); 
-  });
-};
-
-function getOnlineUsers(){
-  doGet('/online_users/'+online_seconds, {}, function(data){ 
-    users = data;
-    var onlineusersList = document.getElementById('online_users_list');
-    for(i in users){
-      addOnlineUserToList(users[i]);
-    }
-  });
-};
-
-function getPrivateChat(the_user){
-  doGet('/private_chat/'+user.user_id+'/'+the_user.user_id, {}, function(data){ 
-    showPrivateChat(data, the_user);
-  });
-};
-
-function sendPrivateMsg(obj){
-  doPost('/private_msg', obj, function(data){ 
-      
-  });
-};
-
-function getPrivateChatMsgs(private_chat_id){
-  doGet('/private_msgs/'+private_chat_id, {}, function(data){ 
-    for(i in data){
-      addMsgToPrivateChat(data[i]);
-    }
-    $('#private_chat_msgs_'+private_chat_id+' li').last().focus();
-  });
-};
-
-function startPrivateChat(the_user){
-  getPrivateChat(the_user);
+    socket.emit('user_login', user);
+  }
   
-  return false;  
-}
-
-function showPrivateChat(private_chat, the_user){
+  this.closeChat = function(){
+    var chat_container = document.getElementById(chat_container_id);
+    var chatroomsDiv = document.getElementById('chatrooms');
+    var onlineusersDiv = document.getElementById('online_users');
+    var chatLink = document.getElementById('chat_link');
+    var chatroomsLink = document.getElementById('chatrooms_link');
+    var switchLink = document.getElementById('chat_switch_link');
     
-  $('#private_chat').show();
-  $('.private_chat').hide();
+    chat_container.style.width = '35px';
+    chatroomsDiv.style.display = 'none';
+    onlineusersDiv.style.display = 'none';
+    chatLink.style.display = 'none';
+    chatroomsLink.style.display = 'none';
+    $('#private_chat').hide();
+    $('#chatroom_chat').hide();
+    switchLink.className = 'close_chat'; 
+  }
   
-  var privatechatDiv = document.getElementById('private_chat');
-  
-  if($('#private_chat').find('#'+private_chat._id).length === 0){
-    var privatechatBlock = document.createElement("DIV");
-    privatechatBlock.id = private_chat._id;
-    privatechatBlock.className = 'private_chat';
-  
-    privatechatDiv.appendChild(privatechatBlock);
-    
-    var privatechatHeader = document.createElement("p");
-    privatechatHeader.innerHTML = the_user.username;
-    
-    privatechatBlock.appendChild(privatechatHeader);
-    
-    var privatechatMsgs = document.createElement("UL");
-    privatechatMsgs.id = 'private_chat_msgs_'+private_chat._id;
-    
-    privatechatBlock.appendChild(privatechatMsgs);
-  
-    var privatechatForm = document.createElement("FORM");
-    privatechatForm.id = 'private_chat_form_'+private_chat._id;
-    privatechatForm.action = '';
-  
-    privatechatBlock.appendChild(privatechatForm);
-    
-    $('<textarea/>', {
-      id: 'pc_msg_'+private_chat._id,
-      keypress: function(event) {
-    if (event.which == 13) {
-        event.preventDefault();
-        $('#private_chat_form_'+private_chat._id).submit();
-    }
-}
-    }).appendTo('#private_chat_form_'+private_chat._id);
-    
-    $('#private_chat_form_'+private_chat._id).submit(function(){
-      if($('#pc_msg_'+private_chat._id).val()){
-        socket.emit('send_private_msg', { private_chat_id: private_chat._id, message: $('#pc_msg_'+private_chat._id).val(), user_id: user.user_id, avatar: user.avatar, with_user_id: the_user.user_id, username: user.username });
-        $('#pc_msg_'+private_chat._id).val('');
+  this.sendChatroom = function(obj){
+    this.doPost('/chatroom', obj, function(data){ 
+      if(data){
+        socket.emit('add_chatroom_to_list', data);
+        self.toggleAddChatroomForm();
+        $('#add_chatroom_error').text("");
+        $('#add_chatroom_error').hide();
+      }else{
+        $('#add_chatroom_error').text(obj.name+' already exists.');
+        $('#add_chatroom_error').show();
       }
-      return false;
     });
+  };
   
-    //privatechatForm.appendChild(privatechatInput);
-  }else{
-    $('#private_chat').find('#'+private_chat._id).show(); 
-  }
+  this.getOnlineUsers = function(){
+    this.doGet('/online_users/'+online_seconds, {}, function(data){ 
+      users = data;
+      var onlineusersList = document.getElementById('online_users_list');
+      for(i in users){
+        self.addOnlineUserToList(users[i]);
+      }
+    });
+  };
   
-  $('#private_chat_msgs_'+private_chat._id).empty();
-  getPrivateChatMsgs(private_chat._id);
-}
-
-function addOnlineUserToList(theuser){
-  if((theuser.user_id !== user.user_id) && ($('#online_users_list').find('#'+theuser.user_id).length === 0)){
-    var onlineusersList = document.getElementById('online_users_list');
+  this.addOnlineUserToList = function(theuser){
+    if((theuser.user_id !== user.user_id) && ($('#online_users_list').find('#'+theuser.user_id).length === 0)){
+      var onlineusersList = document.getElementById('online_users_list');
   
-    if(onlineusersList){
-      var onlineUserItem = document.createElement("LI");
-      onlineUserItem.id = theuser.user_id;
+      if(onlineusersList){
+        var onlineUserItem = document.createElement("LI");
+        onlineUserItem.id = theuser.user_id;
         
-      var onlineUserItemLink = document.createElement("A");
-      onlineUserItemLink.text = theuser.username;
-      onlineUserItemLink.href = '';
-      onlineUserItemLink.onclick = function() { return startPrivateChat(theuser) };
+        var onlineUserItemLink = document.createElement("A");
+        onlineUserItemLink.text = theuser.username;
+        onlineUserItemLink.href = '';
+        onlineUserItemLink.onclick = function() { return self.startPrivateChat(theuser) };
       
-      onlineUserItem.appendChild(onlineUserItemLink);
+        onlineUserItem.appendChild(onlineUserItemLink);
     
-      onlineusersList.appendChild(onlineUserItem); 
+        onlineusersList.appendChild(onlineUserItem); 
       
-      $('#online_users p').hide();
+        $('#online_users p').hide();
       
-      $('#chat_link span').text(' ('+$('#online_users_list li').length+')'); 
+        $('#chat_link span').text(' ('+$('#online_users_list li').length+')'); 
+      }
     }
   }
-}
-
-function removeOnlineUserFromList(theuser){
-  if($('#online_users_list').find('#'+theuser.user_id).length !== 0){
-    $('#online_users_list').find('#'+theuser.user_id).remove();
+  
+  this.getChatrooms = function(){
+    this.doGet('/chatrooms', {}, function(data){ 
+      for(i in data){
+        self.addChatroomToList(data[i]);
+      }
+    });
+  };
+  
+  this.doPost = function(query_string, options, callback){
+    $.post(chat_domain+query_string, options, function(data, textStatus, jqXHR ) {
+      if(textStatus === 'success'){
+        callback(data);
+      }else{
+        callback(null);
+      }
+    }); 
+  };
+  
+  this.doGet = function(query_string, options, callback){
+    $.get(chat_domain+query_string, options, function(data, textStatus, jqXHR ) {
+      if(textStatus === 'success'){
+        callback(data);
+      }else{
+        callback(null);
+      }
+    }); 
+  };
+  
+  this.startPrivateChat = function(the_user){
+    this.getPrivateChat(the_user);
+    return false;  
   }
-}
-
-function addMsgToPrivateChat(obj){
+  
+  this.getPrivateChat = function(the_user){
+    this.doGet('/private_chat/'+user.user_id+'/'+the_user.user_id, {}, function(data){ 
+      self.showPrivateChat(data, the_user);
+    });
+  };
+  
+  this.showPrivateChat = function(private_chat, the_user){
+    
+    $('#private_chat').show();
+    $('.private_chat').hide();
+  
+    var privatechatDiv = document.getElementById('private_chat');
+  
+    if($('#private_chat').find('#'+private_chat._id).length === 0){
+      var privatechatBlock = document.createElement("DIV");
+      privatechatBlock.id = private_chat._id;
+      privatechatBlock.className = 'private_chat';
+  
+      privatechatDiv.appendChild(privatechatBlock);
+    
+      var privatechatHeader = document.createElement("p");
+      privatechatHeader.innerHTML = the_user.username;
+    
+      privatechatBlock.appendChild(privatechatHeader);
+    
+      var privatechatMsgs = document.createElement("UL");
+      privatechatMsgs.id = 'private_chat_msgs_'+private_chat._id;
+    
+      privatechatBlock.appendChild(privatechatMsgs);
+  
+      var privatechatForm = document.createElement("FORM");
+      privatechatForm.id = 'private_chat_form_'+private_chat._id;
+      privatechatForm.action = '';
+  
+      privatechatBlock.appendChild(privatechatForm);
+    
+      $('<textarea/>', {
+        id: 'pc_msg_'+private_chat._id,
+        keypress: function(event) {
+          if (event.which == 13) {
+            event.preventDefault();
+            $('#private_chat_form_'+private_chat._id).submit();
+          }
+        }
+      }).appendTo('#private_chat_form_'+private_chat._id);
+    
+      $('#private_chat_form_'+private_chat._id).submit(function(){
+        if($('#pc_msg_'+private_chat._id).val()){
+          socket.emit('send_private_msg', { private_chat_id: private_chat._id, message: $('#pc_msg_'+private_chat._id).val(), user_id: user.user_id, avatar: user.avatar, with_user_id: the_user.user_id, username: user.username });
+          $('#pc_msg_'+private_chat._id).val('');
+        }
+        return false;
+      });
+    }else{
+      $('#private_chat').find('#'+private_chat._id).show(); 
+    }
+  
+    $('#private_chat_msgs_'+private_chat._id).empty();
+    this.getPrivateChatMsgs(private_chat._id);
+  }
+  
+  this.sendPrivateMsg = function(obj){
+    this.doPost('/private_msg', obj, function(data){   
+    });
+  };
+  
+  this.sendChatroomMsg = function(obj){
+    this.doPost('/chatroom_msg', obj, function(data){   
+    });
+  };
+  
+  this.getPrivateChatMsgs = function(private_chat_id){
+    this.doGet('/private_msgs/'+private_chat_id, {}, function(data){ 
+      for(i in data){
+        self.addMsgToPrivateChat(data[i]);
+      }
+      $('#private_chat_msgs_'+private_chat_id+' li').last().focus();
+    });
+  };
+  
+  this.getChatroomChatMsgs = function(chatroom_id){
+    this.doGet('/chatroom_msgs/'+chatroom_id, {}, function(data){ 
+      for(i in data){
+        self.addMsgToChatroomChat(data[i]);
+      }
+      $('#chatroom_chat_msgs_'+chatroom_id+' li').last().focus();
+    });
+  };
+  
+  this.addMsgToPrivateChat = function(obj){
     var privatechatMsgs = document.getElementById('private_chat_msgs_'+obj.private_chat_id);
     var last_tab_index = $('#private_chat_msgs_'+obj.private_chat_id+' li').last().attr('tabindex');
     
@@ -439,5 +612,43 @@ function addMsgToPrivateChat(obj){
       privatechatMsgs.appendChild(privatechatMsg);
       
       $('#private_chat_msgs_'+obj.private_chat_id+' li').last().focus();
+    }
+  }
+  
+  this.addMsgToChatroomChat = function(obj){
+    var chatroomchatMsgs = document.getElementById('chatroom_chat_msgs_'+obj.chatroom_id);
+    var last_tab_index = $('#chatroom_chat_msgs_'+obj.chatroom_id+' li').last().attr('tabindex');
+    
+    if(chatroomchatMsgs){
+      var chatroomchatMsg = document.createElement("LI");
+      chatroomchatMsg.tabIndex = ++last_tab_index;
+      
+      var chatroomchatImg = document.createElement("IMG");
+      chatroomchatImg.src = obj.avatar;
+      chatroomchatImg.onerror = function(){ chatroomchatImg.src = chat_domain+"/images/img-no-avatar.gif"; };
+      chatroomchatMsg.appendChild(chatroomchatImg);
+      
+      var chatroomchatUsername = document.createElement("SPAN");
+      chatroomchatUsername.innerHTML = obj.username;
+      chatroomchatMsg.appendChild(chatroomchatUsername);
+      
+      var chatroomchatText = document.createElement("P");
+      chatroomchatText.innerHTML = obj.message;
+      chatroomchatMsg.appendChild(chatroomchatText);
+    
+      chatroomchatMsgs.appendChild(chatroomchatMsg);
+      
+      $('#chatroom_chat_msgs_'+obj.chatroom_id+' li').last().focus();
+    }
+  }
+  
+  this.removeOnlineUserFromList = function(theuser){
+    if($('#online_users_list').find('#'+theuser.user_id).length !== 0){
+      $('#online_users_list').find('#'+theuser.user_id).remove();
+      $('#chat_link span').text(' ('+$('#online_users_list li').length+')');
+      if($('#online_users_list li').length === 0){
+        $('#online_users p').show();   
+      }
+    }
   }
 }

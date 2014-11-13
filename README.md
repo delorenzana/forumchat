@@ -4,7 +4,7 @@ Chat
 Chat example
 
 1. This is a modified version of http://socket.io/get-started/chat/.
-2. Modified broadcast to only update a specific chatroom.
+2. Modified broadcast to only update a specific chatroom or private chat.
 3. Embed the following scripts on client:
     <pre>
     General integration:
@@ -28,7 +28,7 @@ Chat example
         your chat stylesheet
         ```
         <xen:if is="{$visitor.user_id}">
-          <link type="text/css" rel="stylesheet" media="all" href="<path-to-plugin-domain>/public/css/chat.css" charset="utf-8" />
+          <link type="text/css" rel="stylesheet" media="all" href="<path-to-plugin-domain>/chat/public/stylesheets/chat.css" charset="utf-8" />
         </xen:if>
        ```
        where you want to add your chat box when user is logged-in.
@@ -50,4 +50,4 @@ Chat example
         </xen:if>
         ```
     </pre>
-4. Run "node index.js" and mongodb (dbpath = \data\db) on plugin
+4. Run "node .\bin\www" and mongodb (dbpath = \data\db) on plugin

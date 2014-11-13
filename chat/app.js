@@ -1,14 +1,10 @@
-var express = require('express');
-var path = require('path');
-var logger = require('morgan');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
-var chatLib = require('./chat.js');
-var dbMod = require('./db.js');
-
-var chat = new chatLib.Chat();
-
-var app = express();
+var express = require('express'),
+  path = require('path'),
+  logger = require('morgan'),
+  cookieParser = require('cookie-parser'),
+  bodyParser = require('body-parser'),
+  dbMod = require('./db.js'),
+  app = express();
 
 app.use(logger('dev'));
 app.use(bodyParser.json());
@@ -42,6 +38,14 @@ app.get('/online_users/:online_seconds', function(req, res){
   });
 });
 
+app.get('/chatrooms', function(req, res){
+  dbMod.getChatrooms({}, function(err, chatrooms) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.send(chatrooms);  
+  });
+});
+
 app.get('/private_chat/:user_id/:with_user_id', function(req, res){
   var user_id = req.params.user_id;
   var with_user_id = req.params.with_user_id;
@@ -61,12 +65,40 @@ app.get('/private_msgs/:private_chat_id', function(req, res){
   });
 });
 
+app.get('/chatroom_msgs/:chatroom_id', function(req, res){
+  var chatroom_id = req.params.chatroom_id;
+  dbMod.getChatroomMsgs({ chatroom_id: chatroom_id }, function(err, msgs) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.send(msgs);  
+  });
+});
+
 app.post('/private_msg', function(req, res){
   dbMod.savePrivateMsg(req.body, function(err, msg) {
-    console.log(msg);
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "X-Requested-With");
     res.send(msg);
+  });
+});
+
+app.post('/chatroom_msg', function(req, res){
+  dbMod.saveChatroomMsg(req.body, function(err, msg) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.send(msg);
+  });
+});
+
+app.post('/chatroom', function(req, res){
+  dbMod.saveChatroom(req.body, function(err, chatroom) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    if(err){
+      res.send(null);
+    }else{
+      res.send(chatroom);  
+    }
   });
 });
 
