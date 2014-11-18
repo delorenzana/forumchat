@@ -14,9 +14,7 @@ Chat example
     <script src="<path-to-plugin-domain>:3000/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="<path-to-plugin-domain>/public/javascripts/index.js"></script>
     <script type="text/javascript">
-      $(function(){
-        $('#chat').initChat({ username: '<username>', user_id: <user_id>, is_moderator: <is_moderator>, avatar: <avatar>, online_seconds: <online_seconds> });
-      });
+        initChat({ username: '<username>', user_id: <user_id>, is_moderator: <is_moderator>, avatar: <avatar>, online_seconds: <online_seconds> });
     </script>
     ```
     Xenforo integration:
@@ -44,9 +42,7 @@ Chat example
           <script src="<path-to-plugin-domain>:3000/socket.io/socket.io.js"></script>
           <script type="text/javascript" src="<path-to-plugin-domain>/public/javascripts/index.js"></script>
           <script type="text/javascript">
-            $(function(){
-              $('#chat').initChat({ username: '{$visitor.username}', user_id: {$visitor.user_id}, is_moderator: {$visitor.is_moderator}, avatar: 'data/avatars/s/0/'+{$visitor.user_id}+'.jpg', online_seconds: 300 });
-            });
+              initChat({ username: '{$visitor.username}', user_id: {$visitor.user_id}, is_moderator: {$visitor.is_moderator}, avatar: 'data/avatars/s/0/'+{$visitor.user_id}+'.jpg', online_seconds: 300 });
           </script>
         </xen:if>
         ```

@@ -1,11 +1,8 @@
 var chat_domain = 'http://localhost:3000';
 var chat_container_id = 'chat';
 var socket = null;
-var open = false;
-var user = null;
-var online_seconds = null;
 
-$.fn.initChat = function(options){
+var initChat = function(options){
     if(typeof io !== 'undefined'){
         socket = io(chat_domain);
         if(socket){
@@ -17,71 +14,49 @@ $.fn.initChat = function(options){
 
 function ChatBar() {
     var self = this;
+    this.user = null;
+    this.online_seconds;
+    this.open = false;
     this.init = function(options){
-        online_seconds = options.online_seconds;
+        this.online_seconds = options.online_seconds;
         delete options.online_seconds;
         this.setUser(options);
     }
   
     this.setUser = function(options){
         this.doPost('/init', options, function(data){ 
-        user = data;
-        self.displayBar();
-        if(user.available){
-            self.displayOnlineUsers();
-        }
-        self.setListeners();
+            self.user = data;
+            self.displayBar();
+            if(self.user.available){
+                self.displayOnlineUsers();
+            }
+            self.setListeners();
         });
     };
   
     this.updateUser = function(){
-        this.doPost('/user', user, function(data){
+        this.doPost('/update', this.user, function(data){
+            this.user = data;
         });
     };
   
     this.setListeners = function(){
-        socket.on('chat_switched', function(obj){
-            if(obj.user_id === user.user_id){
-                user.available = obj.status ? 1:0;
-                self.updateUser();
-            }
-        });  
-        socket.on('chat_activity', function(user_id){
-            if(user_id === user.user_id){
-                self.updateUser();
-            }
-        });
         socket.on('user_login', function(user){
             self.addOnlineUserToList(user); 
         });
         socket.on('user_logout', function(user){
             self.removeOnlineUserFromList(user); 
         });
-        socket.on('start_private_chat', function(privatechat){
-            showUserChat(privatechat);
-        });
-        socket.on('send_private_msg', function(obj){
+        socket.on('add_msg_to_private_chat', function(obj){
             self.addMsgToPrivateChat(obj);
             self.notifyUserOfMessage(obj);
-            if(obj.user_id === user.user_id){
-                self.sendPrivateMsg(obj);
-            }
-        });
-        socket.on('add_chatroom', function(obj){
-            if(obj.user_id === user.user_id){
-                self.sendChatroom(obj);
-            }
         });
         socket.on('add_chatroom_to_list', function(obj){
             self.addChatroomToList(obj);
         });
-        socket.on('send_chatroom_msg', function(obj){
+        socket.on('add_msg_to_chatroom', function(obj){
             self.addMsgToChatroomChat(obj);
-            if(obj.user_id === user.user_id){
-                self.sendChatroomMsg(obj);
-            }else{
-                self.notifyChatroomMessage(obj.chatroom_id);
-            }
+            self.notifyChatroomMessage(obj);
         });
     };
   
@@ -151,7 +126,7 @@ function ChatBar() {
     
         var switchLink = document.createElement("A");
         switchLink.id = 'chat_switch_link';
-        switchLink.className = user.available ? 'open_chat' : 'close_chat';
+        switchLink.className = this.user.available ? 'open_chat' : 'close_chat';
         switchLink.href = '';
         switchLink.onclick = this.switchChat;
       
@@ -166,11 +141,11 @@ function ChatBar() {
       
         chatbarDiv.appendChild(chatroomsLink);
     
-        if(user.available){
-            open = true;
+        if(this.user.available){
+            this.open = true;
             this.openChat();
         }else{
-            open = false;
+            this.open = false;
             this.closeChat();    
         }
     
@@ -178,7 +153,6 @@ function ChatBar() {
     }
   
     this.displayOnlineUsers = function(){
-        socket.emit('chat_activity', user.user_id);
         var onlineusersDiv = document.getElementById('online_users');
         var chatroomsDiv = document.getElementById('chatrooms');
         if(onlineusersDiv.innerHTML === ''){
@@ -187,7 +161,7 @@ function ChatBar() {
             onlineusersDiv.appendChild(onlineUsersHeader);
       
             var onlineUsersList = document.createElement("UL");
-            onlineUsersList.id = 'online_users_list'+user.user_id;
+            onlineUsersList.id = 'online_users_list'+this.user.user_id;
             onlineusersDiv.appendChild(onlineUsersList);
       
             this.getOnlineUsers();
@@ -198,17 +172,32 @@ function ChatBar() {
                 onlineusersDiv.style.display = 'block';
             }else{
                 onlineusersDiv.style.display = 'none';
-                $('#private_chat').hide();
+                document.getElementById('private_chat').style.display = 'none';
             }
         }
         chatroomsDiv.style.display = 'none';
-        $('.chatroom_chat').hide();
+        
+        self.setDisplay('.chatroom_chat', 'none');
     
         return false;
     }
+    
+    this.turnObjToArray = function(obj) {
+        return [].map.call(obj, function(element) {
+            return element;
+        })
+    };
+    
+    this.setDisplay = function(selector, display){
+        var elements = this.turnObjToArray(document.querySelectorAll(selector));
+        if(elements){
+            for(i in elements){
+                elements[i].style.display = display;
+            }
+        }
+    };
   
     this.displayChatrooms = function(){
-        socket.emit('chat_activity', user.user_id);
         var chatroomsDiv = document.getElementById('chatrooms');
         var onlineusersDiv = document.getElementById('online_users');
         if(chatroomsDiv.innerHTML === ''){
@@ -223,7 +212,7 @@ function ChatBar() {
       
             self.getChatrooms();
       
-            if(user.is_moderator){
+            if(self.user.is_moderator){
                 var addChatroomLink = document.createElement("A");
                 addChatroomLink.id = "add_chatroom_link";
                 addChatroomLink.text = "+";
@@ -241,6 +230,14 @@ function ChatBar() {
                 addChatroomForm.id = 'add_chatroom_form';
                 addChatroomForm.action = '';
                 addChatroomForm.style.display = 'none';
+                addChatroomForm.onsubmit = function() {
+                    var addChatroomFormInput = document.getElementById('add_chatroom_form_input');
+                    if(addChatroomFormInput.value){
+                        self.sendChatroom({ name: addChatroomFormInput.value, user_id: self.user.user_id  })
+                        addChatroomFormInput.value = "";
+                    }
+                    return false;
+                };
         
                 var addChatroomFormInput = document.createElement("INPUT");
                 addChatroomFormInput.id = 'add_chatroom_form_input';
@@ -255,14 +252,6 @@ function ChatBar() {
                 addChatroomForm.appendChild(addChatroomFormButton); 
         
                 chatroomsDiv.appendChild(addChatroomForm);
-    
-                $('#add_chatroom_form').submit(function(){
-                    if($('#add_chatroom_form_input').val()){
-                        socket.emit('add_chatroom', { name: $('#add_chatroom_form_input').val(), user_id: user.user_id  });
-                        $('#add_chatroom_form_input').val('');
-                    }
-                    return false;
-                });
             }
             
         }else{
@@ -270,24 +259,27 @@ function ChatBar() {
                 chatroomsDiv.style.display = 'block';
             }else{
                 chatroomsDiv.style.display = 'none';
-                $('.chatroom_chat').hide();
+                self.setDisplay('.chatroom_chat', 'none');
             }
         }
         onlineusersDiv.style.display = 'none';
-        $('#private_chat').hide();
+        self.setDisplay('#private_chat', 'none');
     
         return false;
     }
   
     this.toggleAddChatroomForm = function(){
-        $('#add_chatroom_form').toggle();
-    
-        if($('#add_chatroom_form').is(':visible')){
-            $('#add_chatroom_link').text("-");
+        var addChatroomForm = document.getElementById('add_chatroom_form');
+        var addChatroomLink = document.getElementById('add_chatroom_link');
+        var chatroomsError = document.getElementById('add_chatroom_error');
+        if(addChatroomForm.style.display === 'block'){
+            addChatroomForm.style.display = 'none';
+            addChatroomLink.text = "+";
+            chatroomsError.text = "";
+            chatroomsError.style.display = 'none';
         }else{
-            $('#add_chatroom_link').text("+");
-            $('#add_chatroom_error').text("");
-            $('#add_chatroom_error').hide();
+            addChatroomForm.style.display = 'block';
+            addChatroomLink.text = "-";
         }
     
         return false;  
@@ -313,8 +305,8 @@ function ChatBar() {
   
     this.startChatroom = function(chatroom){
         this.removeNotificationChatroomMessage(chatroom.id);
-        $('#chatroom_chat').show();
-        $('.chatroom_chat').hide();
+        self.setDisplay('#chatroom_chat', 'block');
+        self.setDisplay('.chatroom_chat', 'none');
   
         var chatroomchatDiv = document.getElementById('chatroom_chat');
   
@@ -354,7 +346,7 @@ function ChatBar() {
     
             $('#chatroom_chat_form_'+chatroom.id).submit(function(){
                 if($('#cc_msg_'+chatroom.id).val()){
-                    socket.emit('send_chatroom_msg', { chatroom_id: chatroom.id, message: $('#cc_msg_'+chatroom.id).val(), user_id: user.user_id, avatar: user.avatar, username: user.username });
+                    self.sendChatroomMsg({ chatroom_id: chatroom.id, message: $('#cc_msg_'+chatroom.id).val(), user_id: self.user.user_id, avatar: self.user.avatar, username: self.user.username });
                     $('#cc_msg_'+chatroom.id).val('');
                 }
                 return false;
@@ -369,17 +361,18 @@ function ChatBar() {
     }
   
     this.switchChat = function(){
-        if(open){
-            open = false;
+        if(this.open){
+            this.open = false;
             self.closeChat();
-            socket.emit('user_logout', user);
+            socket.emit('user_logout', self.user);
         }else{
-            open = true;
+            this.open = true;
             self.openChat();
             self.displayOnlineUsers();
         }
     
-        socket.emit('chat_switched', { user_id: user.user_id, status: open });
+        self.user.available = this.open ? 1:0;
+        self.updateUser();
     
         return false;
     }
@@ -395,7 +388,7 @@ function ChatBar() {
         chatLink.style.display = 'block';
         chatroomsLink.style.display = 'block';
   
-        socket.emit('user_login', user);
+        socket.emit('user_login', this.user);
     }
   
     this.closeChat = function(){
@@ -431,10 +424,10 @@ function ChatBar() {
     };
   
     this.getOnlineUsers = function(){
-        this.doGet('/online_users/'+online_seconds, function(data){ 
+        this.doGet('/online_users/'+this.online_seconds, function(data){ 
             if(data){
                 data = JSON.parse(data);
-                var onlineusersList = document.getElementById('online_users_list'+user.user_id);
+                var onlineusersList = document.getElementById('online_users_list'+self.user.user_id);
                 for(i in data){
                     self.addOnlineUserToList(data[i]);
                 }
@@ -443,8 +436,8 @@ function ChatBar() {
     };
   
     this.addOnlineUserToList = function(theuser){
-        if((theuser.user_id !== user.user_id) && ($('#online_users_list'+user.user_id).find('#'+theuser.user_id).length === 0)){
-            var onlineusersList = document.getElementById('online_users_list'+user.user_id);
+        if((theuser.user_id !== this.user.user_id) && ($('#online_users_list'+this.user.user_id).find('#'+theuser.user_id).length === 0)){
+            var onlineusersList = document.getElementById('online_users_list'+this.user.user_id);
   
             if(onlineusersList){
                 var onlineUserItem = document.createElement("LI");
@@ -461,7 +454,7 @@ function ChatBar() {
       
                 $('#online_users p').hide();
       
-                $('#chat_link span').text(' ('+$('#online_users_list'+user.user_id+' li').length+')'); 
+                $('#chat_link span').text(' ('+$('#online_users_list'+this.user.user_id+' li').length+')'); 
             }
         }
     }
@@ -528,7 +521,8 @@ function ChatBar() {
 //        }
 //
 //        xmlhttp.open("POST", chat_domain+query_string, true);
-//        xmlhttp.send(data);
+//        
+//        xmlhttp.send(JSON.stringify(data));
 //    };
   
     this.startPrivateChat = function(the_user){
@@ -538,7 +532,7 @@ function ChatBar() {
     }
   
     this.getPrivateChat = function(the_user){
-        this.doGet('/private_chat/'+user.user_id+'/'+the_user.user_id, function(data){ 
+        this.doGet('/private_chat/'+this.user.user_id+'/'+the_user.user_id, function(data){ 
             data = JSON.parse(data);
             self.showPrivateChat(data, the_user);
         });
@@ -587,7 +581,7 @@ function ChatBar() {
     
             $('#private_chat_form_'+private_chat.id).submit(function(){
                 if($('#pc_msg_'+private_chat.id).val()){
-                    socket.emit('send_private_msg', { private_chat_id: private_chat.id, message: $('#pc_msg_'+private_chat.id).val(), user_id: user.user_id, avatar: user.avatar, with_user_id: the_user.user_id, username: user.username });
+                    self.sendPrivateMsg({ private_chat_id: private_chat.id, message: $('#pc_msg_'+private_chat.id).val(), user_id: self.user.user_id, avatar: self.user.avatar, with_user_id: the_user.user_id, username: self.user.username });
                     $('#pc_msg_'+private_chat.id).val('');
                 }
                 return false;
@@ -601,12 +595,14 @@ function ChatBar() {
     }
   
     this.sendPrivateMsg = function(obj){
-        this.doPost('/private_msg', obj, function(data){   
+        this.doPost('/private_msg', obj, function(data){ 
+            socket.emit('add_msg_to_private_chat', data);
         });
     };
   
     this.sendChatroomMsg = function(obj){
         this.doPost('/chatroom_msg', obj, function(data){   
+            socket.emit('add_msg_to_chatroom', data);
         });
     };
   
@@ -668,14 +664,16 @@ function ChatBar() {
     }
     
     this.removeNotificationOfMessage = function(with_user_id){
-        if($('#online_users_list'+user.user_id).find('#'+with_user_id).length !== 0){
-            $('#online_users_list'+user.user_id).find('#'+with_user_id+' a').removeClass('active');
+        if($('#online_users_list'+this.user.user_id).find('#'+with_user_id).length !== 0){
+            $('#online_users_list'+this.user.user_id).find('#'+with_user_id+' a').removeClass('active');
         }
     }
     
-    this.notifyChatroomMessage = function(chatroom_id){
-        if($('#chatrooms_list').find('#'+chatroom_id).length !== 0){
-            $('#chatrooms_list').find('#'+chatroom_id+' a').addClass('active');
+    this.notifyChatroomMessage = function(chatroom){
+        if(chatroom.user_id !== this.user.user_id){
+            if($('#chatrooms_list').find('#'+chatroom.chatroom_id).length !== 0){
+                $('#chatrooms_list').find('#'+chatroom.chatroom_id+' a').addClass('active');
+            }
         }
     }
     
@@ -713,10 +711,10 @@ function ChatBar() {
     }
   
     this.removeOnlineUserFromList = function(theuser){
-        if($('#online_users_list'+user.user_id).find('#'+theuser.user_id).length !== 0){
-            $('#online_users_list'+user.user_id).find('#'+theuser.user_id).remove();
-            $('#chat_link span').text(' ('+$('#online_users_list'+user.user_id+' li').length+')');
-            if($('#online_users_list'+user.user_id+' li').length === 0){
+        if($('#online_users_list'+this.user.user_id).find('#'+theuser.user_id).length !== 0){
+            $('#online_users_list'+this.user.user_id).find('#'+theuser.user_id).remove();
+            $('#chat_link span').text(' ('+$('#online_users_list'+this.user.user_id+' li').length+')');
+            if($('#online_users_list'+this.user.user_id+' li').length === 0){
                 $('#online_users p').show();   
             }
         }

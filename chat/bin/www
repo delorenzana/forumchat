@@ -7,36 +7,34 @@ var io = require('socket.io')(http);
 app.set('port', process.env.PORT || 3000);
 
 io.on('connection', function(socket){
-  //console.log('a user connected');
-  socket.on('disconnect', function(){
-    //console.log('user disconnected');
-  });
-  socket.on('chat_switched', function(obj){
-    io.emit('chat_switched', obj);
-  });
-  socket.on('chat_activity', function(user_id){
-    io.emit('chat_activity', user_id);
-  });
-  socket.on('user_login', function(user){
-    io.emit('user_login', user);
-  });
-  socket.on('user_logout', function(user){
-    io.emit('user_logout', user);
-  });
-  socket.on('send_private_msg', function(obj){
-    io.emit('send_private_msg', obj);
-  });
-  socket.on('add_chatroom', function(obj){
-    io.emit('add_chatroom', obj);
-  });
-  socket.on('add_chatroom_to_list', function(obj){
-    io.emit('add_chatroom_to_list', obj);
-  });
-  socket.on('send_chatroom_msg', function(obj){
-    io.emit('send_chatroom_msg', obj);
-  });
+
+    console.log('a user connected');
+
+    socket.on('disconnect', function(){
+        console.log('user disconnected');
+    });
+
+    socket.on('user_login', function(user){
+        io.emit('user_login', user);
+    });
+
+    socket.on('user_logout', function(user){
+        io.emit('user_logout', user);
+    });
+
+    socket.on('add_msg_to_private_chat', function(obj){
+        io.emit('add_msg_to_private_chat', obj);
+    });
+
+    socket.on('add_chatroom_to_list', function(obj){
+        io.emit('add_chatroom_to_list', obj);
+    });
+
+    socket.on('add_msg_to_chatroom', function(obj){
+        io.emit('add_msg_to_chatroom', obj);
+    });
 });
 
 var server = http.listen(app.get('port'), function() {
-  debug('Express server listening on port ' + server.address().port);
+    debug('Express server listening on port ' + server.address().port);
 });
