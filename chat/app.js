@@ -1,5 +1,6 @@
 var express = require('express'),
     path = require('path'),
+    fs = require('fs'),
     logger = require('morgan'),
     cookieParser = require('cookie-parser'),
     bodyParser = require('body-parser'),
@@ -14,7 +15,6 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/init', function(req, res) {
-    //console.log(JSON.parse(req.body));
     chatUsers.initUser(req.body, function(err, user) {
         res.header("Access-Control-Allow-Origin", "*");
         res.header("Access-Control-Allow-Headers", "X-Requested-With");
@@ -24,6 +24,12 @@ app.post('/init', function(req, res) {
             res.send(user);
         }
     }); 
+});
+
+app.get('/chat_template', function(req, res) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.sendFile(__dirname + '/public/templates/chat.html');
 });
 
 app.post('/update', function(req, res) {

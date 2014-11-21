@@ -250,4 +250,7 @@ a {
 /*.open_chatroom, */.chatroom_chat {
 	display: none;
 }
+#active_chatroom_sample, #open_chatroom_sample, #private_chat_sample {
+    display:none;
+}
 

@@ -47,4 +47,4 @@ Chat example
         </xen:if>
         ```
     </pre>
-4. Run "node .\bin\www" and mongodb (dbpath = \data\db) on plugin
+4. Run "set DEBUG=chat & node .\bin\www" on plugin.
