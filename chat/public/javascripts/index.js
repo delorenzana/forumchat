@@ -1,28 +1,34 @@
-var chat_domain = 'http://localhost:3000';
-var chat_container_id = 'chat';
-var socket = null;
-
 var initChat = function(options){
-    if(typeof io !== 'undefined'){
-        socket = io(chat_domain);
-        if(socket){
-            var chatbar = new ChatBar();
-            chatbar.init(options); 
-        }
-    }
+    var chatbar = new ChatBar();
+    chatbar.init(options); 
 }
 
 function ChatBar() {
     var self = this;
+    this.chat_domain = null;
+    this.socket = null;
     this.user = null;
+    this.img_no_avatar = null;
     this.online_seconds;
     this.open = false;
     this.chatrooms_loaded = false;
     this.online_users_loaded = false;
+    this.cookie_name = "frdmchat_token";
     this.init = function(options){
         this.online_seconds = options.online_seconds;
+        this.img_no_avatar = options.img_no_avatar;
+        this.chat_domain = options.chat_domain;
+        this.chat_container_id = options.chat_container_id;
         delete options.online_seconds;
-        this.setUser(options);
+        delete options.img_no_avatar;
+        delete options.chat_domain;
+        delete options.chat_container_id;
+        if(typeof io !== 'undefined'){
+            this.socket = io(this.chat_domain);
+            if(this.socket){
+                this.setUser(options);
+            }
+        }
     }
   
     this.setUser = function(options){
@@ -40,24 +46,34 @@ function ChatBar() {
     };
   
     this.setListeners = function(){
-        socket.on('user_login', function(user){
+        this.socket.on('user_login', function(user){
             self.addOnlineUserToList(user); 
         });
-        socket.on('user_logout', function(user){
+        this.socket.on('user_logout', function(user){
             self.removeOnlineUserFromList(user); 
         });
-        socket.on('add_msg_to_private_chat', function(obj){
+        this.socket.on('add_msg_to_private_chat', function(obj){
             self.addMsgToPrivateChat(obj);
             self.notifyUserOfMessage(obj);
         });
-        socket.on('add_chatroom_to_list', function(obj){
+        this.socket.on('add_chatroom_to_list', function(obj){
             self.addChatroomToList(obj);
         });
-        socket.on('add_msg_to_chatroom', function(obj){
+        this.socket.on('add_msg_to_chatroom', function(obj){
             self.addMsgToChatroomChat(obj);
             self.notifyChatroomMessage(obj);
         });
     };
+    
+//    this.getCookie = function() {
+//        var name = this.cookie_name;
+//        var value = "; " + document.cookie;
+//        var parts = value.split("; " + name + "=");
+//        if (parts.length === 2){ 
+//            return parts.pop().split(";").shift();
+//        }
+//        return document.cookie;
+//    }
     
     this.template = function (templateHTML, data) {
         for(var x in data) {
@@ -72,7 +88,7 @@ function ChatBar() {
     };
     
     this.getChatTemplate = function(chat_container){
-        this.doGet('/chat_template', function(data){ 
+        this.doGet('/chat/'+this.user.user_id+'/'+this.user.token, function(data){ 
             if(data){ 
                 $("body").append(data);
                 chat_container.innerHTML = $("#chatTpl").html();
@@ -122,89 +138,10 @@ function ChatBar() {
     }
   
     this.displayBar = function(){
-        var chat_container = document.getElementById(chat_container_id);
+        var chat_container = document.getElementById(this.chat_container_id);
     
         this.getChatTemplate(chat_container);
         
-        
-    
-
-//      
-//        // online users count
-//    
-//        var chatLinkCount = document.createElement("SPAN");
-//        chatLinkCount.innerHTML = "(0)";
-//      
-//        chatP.appendChild(chatLinkCount);
-//        
-//        // chatrooms link
-//    
-//        var chatroomsLink = document.createElement("A");
-//        chatroomsLink.id = 'chatrooms_link';
-//        chatroomsLink.href = '';
-//        chatroomsLink.onclick = this.displayChatrooms;
-//        
-//        var outerChatroomsDiv = document.createElement("DIV");
-//        outerChatroomsDiv.setAttribute("id","outer_chatrooms");
-//        outerChatroomsDiv.setAttribute("class","outer_box");
-//        
-
-
-//         
-//        chatroomsLink.appendChild(outerChatroomsDiv);
-//      
-//        chatbarDiv.appendChild(chatroomsLink);
-//    
-//        // switch link
-//    
-//        var switchLink = document.createElement("A");
-//        switchLink.id = 'chat_switch_link';
-//        switchLink.className = this.user.available ? 'open_chat' : 'close_chat';
-//        switchLink.href = '';
-//        switchLink.onclick = this.switchChat;
-//        
-//        var outerSwitchDiv = document.createElement("DIV");
-//        outerSwitchDiv.setAttribute("id","outer_chat_switch_link");
-//        outerSwitchDiv.setAttribute("class","outer_box");
-//        
-//        chatLink.appendChild(outerChatDiv);
-//        
-//         
-//        switchLink.appendChild(outerSwitchDiv);
-//      
-//        chatbarDiv.appendChild(switchLink);
-//    
-//        // chatrooms
-//    
-//        var chatroomsDiv = document.createElement("DIV");
-//        chatroomsDiv.setAttribute("id","chatrooms");
-//        chatroomsDiv.setAttribute("class","outer_chatrooms");
-//      
-//        chatBox.appendChild(chatroomsDiv);
-//    
-//        // chatroom chat
-//    
-//        var chatroomchatDiv = document.createElement("DIV");
-//        chatroomchatDiv.setAttribute("id","chatroom_chat");
-//      
-//        chatBox.appendChild(chatroomchatDiv);
-//    
-//        // online users
-//    
-//        var onlineusersDiv = document.createElement("DIV");
-//        onlineusersDiv.setAttribute("id","online_users");
-//      
-//        chatBox.appendChild(onlineusersDiv);
-//    
-//        // private chat
-//    
-//        var privatechatDiv = document.createElement("DIV");
-//        privatechatDiv.setAttribute("id","private_chat");
-//      
-//        chatBox.appendChild(privatechatDiv);
-    
-
-    
         return false;
     }
   
@@ -400,7 +337,7 @@ function ChatBar() {
         if(this.open){
             this.open = false;
             self.closeChat();
-            socket.emit('user_logout', self.user);
+            self.socket.emit('user_logout', self.user);
         }else{
             this.open = true;
             self.openChat();
@@ -414,7 +351,7 @@ function ChatBar() {
     }
   
     this.openChat = function(){
-        var chat_container = document.getElementById(chat_container_id);
+        var chat_container = document.getElementById(this.chat_container_id);
         var chatLink = document.getElementById('chat_link');
         var chatroomsLink = document.getElementById('chatrooms_link');
         var switchLink = document.getElementById('chat_switch_link');
@@ -424,11 +361,11 @@ function ChatBar() {
         chatLink.style.display = 'block';
         chatroomsLink.style.display = 'block';
   
-        socket.emit('user_login', this.user);
+        this.socket.emit('user_login', this.user);
     }
   
     this.closeChat = function(){
-        var chat_container = document.getElementById(chat_container_id);
+        var chat_container = document.getElementById(this.chat_container_id);
         var chatroomsDiv = document.getElementById('chatrooms');
         var onlineusersDiv = document.getElementById('online_users');
         var chatLink = document.getElementById('chat_link');
@@ -446,9 +383,10 @@ function ChatBar() {
     }
   
     this.sendChatroom = function(obj){
+        obj.token = this.user.token;
         this.doPost('/chatroom', obj, function(data){ 
             if(data){
-                socket.emit('add_chatroom_to_list', data);
+                self.socket.emit('add_chatroom_to_list', data);
                 self.toggleAddChatroomForm();
                 document.getElementById('add_chatroom_error').innerHTML = "";
                 self.setDisplay('#add_chatroom_error', 'none');
@@ -460,7 +398,7 @@ function ChatBar() {
     };
   
     this.getOnlineUsers = function(){
-        this.doGet('/online_users/'+this.online_seconds, function(data){ 
+        this.doGet('/online_users/'+this.user.user_id+'/'+this.user.token, function(data){ 
             if(data){
                 data = JSON.parse(data);
                 for(i in data){
@@ -505,7 +443,7 @@ function ChatBar() {
     }
   
     this.getChatrooms = function(){
-        this.doGet('/chatrooms', function(data){ 
+        this.doGet('/chatrooms/'+this.user.user_id+'/'+this.user.token, function(data){ 
             if(data){
                 data = JSON.parse(data);
                 for(i in data){
@@ -516,7 +454,7 @@ function ChatBar() {
     };
   
     this.doPost = function(query_string, options, callback){
-        $.post(chat_domain+query_string, options, function(data, textStatus, jqXHR ) {
+        $.post(this.chat_domain+query_string, options, function(data, textStatus, jqXHR ) {
             if(textStatus === 'success'){
                 callback(data);
             }else{
@@ -543,7 +481,7 @@ function ChatBar() {
 //            }
 //        }
 //
-//        xmlhttp.open("POST", chat_domain+query_string, true);
+//        xmlhttp.open("POST", this.chat_domain+query_string, true);
 //        console.log(JSON.stringify(data));
 //        xmlhttp.send(JSON.stringify(data));
 //    };
@@ -566,7 +504,7 @@ function ChatBar() {
             }
         }
 
-        xmlhttp.open("GET", chat_domain+query_string, true);
+        xmlhttp.open("GET", this.chat_domain+query_string, true);
         xmlhttp.send();
     };
   
@@ -577,7 +515,7 @@ function ChatBar() {
     }
   
     this.getPrivateChat = function(the_user){
-        this.doGet('/private_chat/'+this.user.user_id+'/'+the_user.user_id, function(data){ 
+        this.doGet('/private_chat/'+this.user.user_id+'/'+the_user.user_id+'/'+this.user.token, function(data){ 
             data = JSON.parse(data);
             self.showPrivateChat(data, the_user);
         });
@@ -635,19 +573,25 @@ function ChatBar() {
     }
   
     this.sendPrivateMsg = function(obj){
-        this.doPost('/private_msg', obj, function(data){ 
-            socket.emit('add_msg_to_private_chat', data);
+        obj.token = this.user.token;
+        this.doPost('/private_msg', obj, function(data){
+            if(data){
+                self.socket.emit('add_msg_to_private_chat', data);
+            }
         });
     };
   
     this.sendChatroomMsg = function(obj){
+        obj.token = this.user.token;
         this.doPost('/chatroom_msg', obj, function(data){   
-            socket.emit('add_msg_to_chatroom', data);
+            if(data){
+                self.socket.emit('add_msg_to_chatroom', data);
+            }
         });
     };
   
     this.getPrivateChatMsgs = function(private_chat_id){
-        this.doGet('/private_msgs/'+private_chat_id, function(data){
+        this.doGet('/private_msgs/'+private_chat_id+'/'+this.user.user_id+'/'+this.user.token, function(data){
             if(data){
                 data = JSON.parse(data);
                 for(i in data){
@@ -659,7 +603,7 @@ function ChatBar() {
     };
   
     this.getChatroomChatMsgs = function(chatroom_id){
-        this.doGet('/chatroom_msgs/'+chatroom_id, function(data){ 
+        this.doGet('/chatroom_msgs/'+chatroom_id+'/'+this.user.user_id+'/'+this.user.token, function(data){ 
             if(data){
                 data = JSON.parse(data);
                 for(i in data){
@@ -681,7 +625,7 @@ function ChatBar() {
       
             var privatechatImg = document.createElement("IMG");
             privatechatImg.src = obj.avatar;
-            privatechatImg.onerror = function(){ privatechatImg.src = chat_domain+"/images/img-no-avatar.gif"; };
+            privatechatImg.onerror = function(){ privatechatImg.src = self.img_no_avatar; };
             privatechatMsg.appendChild(privatechatImg);
       
             var privatechatUsername = document.createElement("SPAN");
@@ -734,7 +678,7 @@ function ChatBar() {
       
             var chatroomchatImg = document.createElement("IMG");
             chatroomchatImg.src = obj.avatar;
-            chatroomchatImg.onerror = function(){ chatroomchatImg.src = chat_domain+"/images/img-no-avatar.gif"; };
+            chatroomchatImg.onerror = function(){ chatroomchatImg.src = self.img_no_avatar; };
             chatroomchatMsg.appendChild(chatroomchatImg);
       
             var chatroomchatUsername = document.createElement("SPAN");
