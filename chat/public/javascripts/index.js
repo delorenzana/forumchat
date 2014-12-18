@@ -103,9 +103,15 @@ function ChatBar() {
         
         var chatLink = document.getElementById("chat_link");
         chatLink.onclick = this.displayOnlineUsers;
+
+        var chatTitle2 = document.getElementById("chat_title_2");
+        chatTitle2.onclick = this.displayOnlineUsers;
         
         var chatroomsLink = document.getElementById("chatrooms_link");
         chatroomsLink.onclick = this.displayChatrooms;
+
+        var chatTitle = document.getElementById("chat_title");
+        chatTitle.onclick = this.displayChatrooms;
         
         if(self.user.is_moderator){
             var addChatroomLink = document.getElementById("add_chatroom_link");
@@ -131,6 +137,7 @@ function ChatBar() {
         if(this.user.available){
             this.open = true;
             this.openChat();
+            this.getOpenPrivateChats();
         }else{
             this.open = false;
             this.closeChat();    
@@ -148,7 +155,7 @@ function ChatBar() {
     this.displayOnlineUsers = function(){
         if(!self.online_users_loaded){
             var onlineUsersList = document.getElementById('online_users_list');
-            self.setDisplay('#online_users', 'block');
+            self.setDisplay('#online_users', 'none');
             onlineUsersList.id = 'online_users_list'+self.user.user_id;
             this.getOnlineUsers();
             
@@ -156,9 +163,11 @@ function ChatBar() {
         }else{
             if(self.getDisplay('#online_users') === 'none'){
                 self.setDisplay('#online_users', 'block');
+                self.setDisplay('#chat_link', 'none');
             }else{
                 self.setDisplay('#online_users', 'none');
-                self.setDisplay('#private_chat', 'none');
+                self.setDisplay('#chat_link', 'block');
+                //self.setDisplay('#private_chat', 'none');
             }
         }
         
@@ -208,6 +217,11 @@ function ChatBar() {
         }
     };
     
+    this.scrollToLast = function(selector){
+        var element = document.querySelector(selector);
+        element.scrollTop = element.scrollHeight;
+    };
+    
     this.getLastTabIndex = function(selector){
         var elements = document.querySelectorAll(selector);
         return elements.length ? elements[elements.length-1].getAttribute('tabindex') : 0;
@@ -227,6 +241,7 @@ function ChatBar() {
         
         self.setDisplay('#online_users', 'none');
         self.setDisplay('#private_chat', 'none');
+        self.setDisplay('#chat_link', 'block');
     
         return false;
     }
@@ -322,6 +337,7 @@ function ChatBar() {
                 }
             };
             chatroomchatFormInput.onclick = function() { self.removeNotificationChatroomMessage(chatroom.id) };
+            chatroomchatFormInput.focus();
             
             this.getChatroomChatMsgs(chatroom.id);
             
@@ -425,7 +441,7 @@ function ChatBar() {
     
                 onlineusersList.appendChild(onlineUserItem); 
       
-                self.setDisplay('#online_users p', 'none');
+                self.setDisplay('#online_users p#no_active_user', 'none');
       
                 document.querySelector('#chat_link p span').innerHTML = document.querySelectorAll('#online_users_list'+this.user.user_id+' li').length; 
             }
@@ -448,6 +464,18 @@ function ChatBar() {
                 data = JSON.parse(data);
                 for(i in data){
                     self.addChatroomToList(data[i]);
+                }
+            }
+        });
+    };
+    
+    this.getOpenPrivateChats = function(){
+        this.doGet('/private_chats/open/'+this.user.user_id+'/'+this.user.token, function(data){ 
+            if(data){
+                data = JSON.parse(data);
+                for(i in data){
+                    self.showPrivateChat(data[i], { username: data[i].username, user_id: data[i].other_user_id });
+                    self.togglePrivateChat(data[i].id);
                 }
             }
         });
@@ -524,7 +552,7 @@ function ChatBar() {
     this.showPrivateChat = function(private_chat, the_user){
     
         self.setDisplay('#private_chat', 'block');
-        self.setDisplay('.private_chat', 'none');
+        //self.setDisplay('.private_chat', 'none');
   
         var privatechatDiv = document.getElementById('private_chat');
   
@@ -537,15 +565,38 @@ function ChatBar() {
             privatechatBlock.innerHTML = privatechatSample.innerHTML;
   
             privatechatDiv.appendChild(privatechatBlock);
+            
+            var privatechatHeaderSample = document.getElementById('private_chat_header_sample');
+            
+            var privatechatHeaderBlock = document.createElement("DIV");
+            privatechatHeaderBlock.id = 'private_chat_header_'+private_chat.id;
+            privatechatHeaderBlock.className = 'private_chat_header';
+            privatechatHeaderBlock.innerHTML = privatechatHeaderSample.innerHTML;
+            privatechatHeaderBlock.style.display = 'none';
+            
+            privatechatDiv.appendChild(privatechatHeaderBlock);
+            
+            var privatechatHeaderBlockP = document.querySelector('#private_chat_header_'+private_chat.id+' p.username');
+            privatechatHeaderBlockP.innerHTML = the_user.username;
+            privatechatHeaderBlockP.onclick = function() { return self.togglePrivateChatHeader(private_chat.id); };
     
             var privatechatHeader = document.querySelector('#private_chat_'+private_chat.id+' p.username');
             privatechatHeader.innerHTML = the_user.username;
+            privatechatHeader.onclick = function() { return self.togglePrivateChat(private_chat.id); };
+            
+            var privatechatClose = document.querySelector('#private_chat_'+private_chat.id+' a.close_chat');
+            privatechatClose.onclick = function() { return self.removePrivateChat(private_chat); };
+            
+            var privatechatHeaderClose = document.querySelector('#private_chat_header_'+private_chat.id+' a.close_chat');
+            privatechatHeaderClose.onclick = function() { return self.removePrivateChat(private_chat); };
     
             var privatechatMsgs = document.querySelector('#private_chat_'+private_chat.id+' ul');
             privatechatMsgs.id = 'private_chat_msgs_'+private_chat.id;
+            privatechatMsgs.style.display = 'block';
   
             var privatechatForm = document.querySelector('#private_chat_'+private_chat.id+' form');
             privatechatForm.id = 'private_chat_form_'+private_chat.id;
+            privatechatForm.style.display = 'block';
             privatechatForm.onsubmit = function(){
                 var privatechatFormInput = document.getElementById('pc_msg_'+private_chat.id);
                 if(privatechatFormInput.value){
@@ -564,12 +615,46 @@ function ChatBar() {
                 }
             };
             privatechatFormInput.onclick = function() { self.removeNotificationOfMessage(the_user.user_id) };
+            privatechatFormInput.focus();
             
             this.getPrivateChatMsgs(private_chat.id);
         }
         
         self.setDisplay('#private_chat_'+private_chat.id, 'block');
+        self.setDisplay('#private_chat_header_'+private_chat.id, 'none');
         
+    }
+    
+    this.togglePrivateChat = function(id){
+        if(document.querySelector('#private_chat_'+id).style.display === 'block'){
+            document.querySelector('#private_chat_'+id).style.display = 'none';
+            document.querySelector('#private_chat_header_'+id).style.display = 'block';
+        }else{
+            document.querySelector('#private_chat_'+id).style.display = 'block';
+            document.querySelector('#private_chat_header_'+id).style.display = 'none';
+        }
+    
+        return false;  
+    }
+    
+    this.togglePrivateChatHeader = function(id){
+        if(document.querySelector('#private_chat_header_'+id).style.display === 'block'){
+            document.querySelector('#private_chat_header_'+id).style.display = 'none';
+            document.querySelector('#private_chat_'+id).style.display = 'block';
+        }else{
+            document.querySelector('#private_chat_header_'+id).style.display = 'block';
+            document.querySelector('#private_chat_'+id).style.display = 'none';
+        }
+    
+        return false;  
+    }
+    
+    this.removePrivateChat = function(private_chat){
+        document.querySelector('#private_chat_'+private_chat.id).remove();
+        document.querySelector('#private_chat_header_'+private_chat.id).remove();
+        self.closePrivateChat(private_chat);
+       
+        return false;  
     }
   
     this.sendPrivateMsg = function(obj){
@@ -597,7 +682,18 @@ function ChatBar() {
                 for(i in data){
                     self.addMsgToPrivateChat(data[i]);
                 }
-                self.setLastFocus('#private_chat_msgs_'+private_chat_id+' li');
+                //self.setLastFocus('#private_chat_msgs_'+private_chat_id+' li');
+                self.scrollToLast('#private_chat_msgs_'+private_chat_id);
+                
+            }
+        });
+    };
+    
+    this.closePrivateChat = function(obj){
+        obj.token = this.user.token;
+        this.doPost('/private_chat/close', obj, function(data){
+            if(data){
+                // nothing
             }
         });
     };
@@ -610,7 +706,8 @@ function ChatBar() {
                     self.addMsgToChatroomChat(data[i]);
                 }
                 
-                self.setLastFocus('#chatroom_chat_msgs_'+chatroom_id+' li');
+                //self.setLastFocus('#chatroom_chat_msgs_'+chatroom_id+' li');
+                self.scrollToLast('#chatroom_chat_msgs_'+chatroom_id);
             }
         });
     };
@@ -618,27 +715,41 @@ function ChatBar() {
     this.addMsgToPrivateChat = function(obj){
         var privatechatMsgs = document.getElementById('private_chat_msgs_'+obj.private_chat_id);
         var last_tab_index = this.getLastTabIndex('#private_chat_msgs_'+obj.private_chat_id+' li');
+        var lastChild = null;
+        if(last_tab_index){
+            var lastChild = privatechatMsgs.lastChild;
+        }
         
         if(privatechatMsgs){
-            var privatechatMsg = document.createElement("LI");
-            privatechatMsg.tabIndex = ++last_tab_index;
+            
+            if(lastChild && (lastChild.querySelector('span').innerHTML === obj.username)){
+                
+               var privatechatText = document.createElement("P");
+                privatechatText.innerHTML = obj.message;
+                lastChild.appendChild(privatechatText);
+                
+            }else{
+                var privatechatMsg = document.createElement("LI");
+                privatechatMsg.tabIndex = ++last_tab_index;
       
-            var privatechatImg = document.createElement("IMG");
-            privatechatImg.src = obj.avatar;
-            privatechatImg.onerror = function(){ privatechatImg.src = self.img_no_avatar; };
-            privatechatMsg.appendChild(privatechatImg);
+                var privatechatImg = document.createElement("IMG");
+                privatechatImg.src = obj.avatar;
+                privatechatImg.onerror = function(){ privatechatImg.src = self.img_no_avatar; };
+                privatechatMsg.appendChild(privatechatImg);
       
-            var privatechatUsername = document.createElement("SPAN");
-            privatechatUsername.innerHTML = obj.username;
-            privatechatMsg.appendChild(privatechatUsername);
+                var privatechatUsername = document.createElement("SPAN");
+                privatechatUsername.innerHTML = obj.username;
+                privatechatMsg.appendChild(privatechatUsername);
       
-            var privatechatText = document.createElement("P");
-            privatechatText.innerHTML = obj.message;
-            privatechatMsg.appendChild(privatechatText);
+                var privatechatText = document.createElement("P");
+                privatechatText.innerHTML = obj.message;
+                privatechatMsg.appendChild(privatechatText);
     
-            privatechatMsgs.appendChild(privatechatMsg);
+                privatechatMsgs.appendChild(privatechatMsg);
+            }
       
-            self.setLastFocus('#private_chat_msgs_'+obj.private_chat_id+' li');
+            //self.setLastFocus('#private_chat_msgs_'+obj.private_chat_id+' li');
+            self.scrollToLast('#private_chat_msgs_'+obj.private_chat_id);
         }
     }
     
@@ -691,7 +802,8 @@ function ChatBar() {
     
             chatroomchatMsgs.appendChild(chatroomchatMsg);
      
-            this.setLastFocus('#chatroom_chat_msgs_'+obj.chatroom_id+' li');
+            //this.setLastFocus('#chatroom_chat_msgs_'+obj.chatroom_id+' li');
+            self.scrollToLast('#chatroom_chat_msgs_'+obj.chatroom_id);
         }
     }
 }

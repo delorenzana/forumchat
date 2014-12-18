@@ -115,7 +115,7 @@
             </a> 
         </div>
         <div id="chatrooms" class="outer_chatrooms">
-            <p class="chat_title">Chatrooms</p>
+            <p id="chat_title" class="chat_title">Chatrooms</p>
             <ul id="chatrooms_list" class="chatlist">
                 <li>
                     <ul class="chat_featured">
@@ -246,17 +246,37 @@
             </div>
         </div>
         <div id="online_users">
-            <p>No one is available to chat.</p>
+            <p id="chat_title_2" class="chat_title">Chat</p>
+            <p id="no_active_user">No one is available to chat.</p>
             <ul id="online_users_list" class="ol_users_list"></ul>
         </div>
         <div id="private_chat">
             <div id="private_chat_sample" class="private_chat">
                 <p class="username"></p>
-                <ul>
+                <a class="close_chat" href="">
+                    <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="10px" height="10px" viewBox="0 0 10 10" enable-background="new 0 0 10 10" xml:space="preserve">
+                                <path fill="#F5F5F5" d="M6.396,5l3.473-3.472C10,1.394,10,1.178,9.869,1.046L8.955,0.131c-0.135-0.132-0.35-0.132-0.484,0L5,3.604
+                                    L1.527,0.131c-0.133-0.132-0.349-0.132-0.483,0L0.131,1.046c-0.132,0.132-0.132,0.348,0,0.481L3.604,5L0.131,8.473
+                                    c-0.132,0.133-0.132,0.348,0,0.482l0.913,0.914C1.178,10,1.394,10,1.527,9.869L5,6.395l3.471,3.475C8.605,10,8.82,10,8.955,9.869
+                                    l0.914-0.914C10,8.82,10,8.605,9.869,8.473L6.396,5z"/>
+                    </svg>
+                </a>
+                <ul class="private_chat_msgs">
                 </ul>
                 <form action="">
                     <textarea></textarea>
                 </form>
+            </div>
+            <div id="private_chat_header_sample" class="private_chat_header">
+                <p class="username"></p>
+                <a class="close_chat" href="">
+                    <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="10px" height="10px" viewBox="0 0 10 10" enable-background="new 0 0 10 10" xml:space="preserve">
+                                <path fill="#F5F5F5" d="M6.396,5l3.473-3.472C10,1.394,10,1.178,9.869,1.046L8.955,0.131c-0.135-0.132-0.35-0.132-0.484,0L5,3.604
+                                    L1.527,0.131c-0.133-0.132-0.349-0.132-0.483,0L0.131,1.046c-0.132,0.132-0.132,0.348,0,0.481L3.604,5L0.131,8.473
+                                    c-0.132,0.133-0.132,0.348,0,0.482l0.913,0.914C1.178,10,1.394,10,1.527,9.869L5,6.395l3.471,3.475C8.605,10,8.82,10,8.955,9.869
+                                    l0.914-0.914C10,8.82,10,8.605,9.869,8.473L6.396,5z"/>
+                    </svg>
+                </a>
             </div>
         </div>
     </div>

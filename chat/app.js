@@ -101,7 +101,33 @@ app.get('/private_chat/:user_id/:with_user_id/:token', function(req, res) {
     } else {
         res.send(null);
     }
-    
+});
+
+app.get('/private_chats/open/:user_id/:token', function(req, res) {
+    var user_id = req.params.user_id;
+    var token = req.params.token;
+    var verified_token = chatUsers.verifyToken(user_id, token);
+    if(verified_token){
+        chatUsers.getOpenPrivateChats(user_id, function(err, private_chats) {
+            if(err){
+                res.send(null);
+            }else{
+                res.send(private_chats);
+            }
+        });  
+    }else{
+        res.send(null);
+    }
+});
+
+app.post('/private_chat/close', function(req, res) {
+    chatUsers.closePrivateChat(req.body, function(err, privatechat) {
+        if (err) {
+            res.send(null);
+        } else {
+            res.send(privatechat);
+        }  
+    });
 });
 
 app.get('/private_msgs/:private_chat_id/:user_id/:token', function(req, res) {

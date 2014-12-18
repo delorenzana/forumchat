@@ -111,12 +111,31 @@ function ChatUsers() {
                        );
             });
             if(found_private_chats.length === 1){
+                found_private_chats[0].is_open = true;
                 return found_private_chats[0];
             }
             
         }
         
         return null;
+    };
+    this.getOpenPrivateChats = function(user_id, callback){
+        user_id = parseInt(user_id);
+        var found_private_chats = this.private_chats.filter(function(item){
+            return (((item.user_id === user_id) || (item.with_user_id === user_id)) && (item.is_open === true));
+        });
+        
+        if(found_private_chats.length){
+            for(i in found_private_chats){
+                var other_user_id = (found_private_chats[i].user_id === user_id) ? found_private_chats[i].with_user_id : found_private_chats[i].user_id;
+                var other_user = this.getUser(other_user_id);
+                found_private_chats[i].username = other_user.username;
+                found_private_chats[i].other_user_id = other_user.user_id;
+            }
+            callback(false, found_private_chats);
+        }else{
+            callback(true);
+        }
     };
     this.addPrivateChat = function(private_chat){
         var user_1_token = this.getUserToken(private_chat.user_id);
@@ -131,11 +150,35 @@ function ChatUsers() {
         private_chat.with_user_token = user_2_token;
         private_chat.total_messages = 0;
         private_chat.unread_messages = 0;
+        private_chat.is_open = true;
         private_chat.created_at = new Date().getTime();
        
         this.private_chats.push(private_chat); 
         
         return private_chat;
+    };
+    this.closePrivateChat = function(private_chat, callback){
+        private_chat.user_id = parseInt(private_chat.user_id);
+        private_chat.with_user_id = parseInt(private_chat.with_user_id);
+        if(this.verifyToken(private_chat.user_id, private_chat.token) === null){
+            callback(true);
+        } else if(this.verifyPrivateChatToken(private_chat.id, private_chat.token)) {
+            
+            var found_private_chats = this.private_chats.filter(function(item){
+                return (((item.user_id === private_chat.user_id) && (item.with_user_id === private_chat.with_user_id))
+                       || ((item.user_id === private_chat.with_user_id) && (item.with_user_id === private_chat.user_id))
+                       );
+            });
+            
+            if(found_private_chats.length === 1){
+                found_private_chats[0].is_open = false;
+                private_chat = found_private_chats[0];
+            }
+        
+            callback(false, private_chat);
+        } else {
+            callback(true);
+        }
     };
     this.verifyPrivateChatToken = function(private_chat_id, token){
         private_chat_id = parseInt(private_chat_id);
