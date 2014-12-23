@@ -247,6 +247,15 @@ function ChatUsers() {
         }
         return null;
     };
+    this.getChatroomById = function(id){
+        var found_chatrooms = this.chatrooms.filter(function(item){
+            return item.id === id;
+        });
+        if(found_chatrooms.length === 1){
+            return found_chatrooms[0];
+        }
+        return null;
+    };
     this.addChatroom = function(chatroom, callback){
         if(this.verifyToken(chatroom.user_id, chatroom.token) === null){
             callback(true);
@@ -261,6 +270,7 @@ function ChatUsers() {
         
                 chatroom.id = this.chatroom_count;
                 chatroom.user_id = parseInt(chatroom.user_id);
+                chatroom.msg_count = 0;
                 chatroom.created_at = new Date().getTime();
        
                 this.chatrooms.push(chatroom);
@@ -303,6 +313,12 @@ function ChatUsers() {
             chatroom_message.created_at = new Date().getTime();
        
             this.chatroom_messages.push(chatroom_message);
+            
+            var chatroom = this.getChatroomById(chatroom_message.chatroom_id);
+            if(chatroom){
+                chatroom.msg_count++;
+                chatroom_message.msg_count = chatroom.msg_count;
+            }
         
             callback(false, chatroom_message);
         }

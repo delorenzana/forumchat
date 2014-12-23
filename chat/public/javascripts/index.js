@@ -277,7 +277,7 @@ function ChatBar() {
             
             var chatroomUserCount = document.createElement("LI");
             chatroomUserCount.id = 'chatroom_count_'+obj.id;
-            chatroomUserCount.innerHTML = "0";
+            chatroomUserCount.innerHTML = obj.msg_count;
             
             chatroomsListCount.appendChild(chatroomUserCount);
         }
@@ -892,6 +892,9 @@ function ChatBar() {
     }
     
     this.notifyChatroomMessage = function(chatroom){
+        if(document.querySelectorAll('#chatrooms_list .chat_members #chatroom_count_'+chatroom.chatroom_id).length !== 0){
+            document.querySelector('#chatrooms_list .chat_members #chatroom_count_'+chatroom.chatroom_id).innerHTML = chatroom.msg_count;
+        }
         if(chatroom.user_id !== this.user.user_id){
             if(document.querySelectorAll('#chatrooms_list #chatroom_'+chatroom.chatroom_id).length !== 0){
                 document.querySelector('#chatrooms_list #chatroom_'+chatroom.chatroom_id+' a').setAttribute('class', 'active');
