@@ -277,7 +277,7 @@ function ChatBar() {
             
             var chatroomUserCount = document.createElement("LI");
             chatroomUserCount.id = 'chatroom_count_'+obj.id;
-            chatroomUserCount.innerHTML = obj.msg_count;
+            chatroomUserCount.innerHTML = obj.user_count;
             
             chatroomsListCount.appendChild(chatroomUserCount);
         }
@@ -893,7 +893,7 @@ function ChatBar() {
     
     this.notifyChatroomMessage = function(chatroom){
         if(document.querySelectorAll('#chatrooms_list .chat_members #chatroom_count_'+chatroom.chatroom_id).length !== 0){
-            document.querySelector('#chatrooms_list .chat_members #chatroom_count_'+chatroom.chatroom_id).innerHTML = chatroom.msg_count;
+            document.querySelector('#chatrooms_list .chat_members #chatroom_count_'+chatroom.chatroom_id).innerHTML = chatroom.user_count;
         }
         if(chatroom.user_id !== this.user.user_id){
             if(document.querySelectorAll('#chatrooms_list #chatroom_'+chatroom.chatroom_id).length !== 0){

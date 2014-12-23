@@ -271,6 +271,8 @@ function ChatUsers() {
                 chatroom.id = this.chatroom_count;
                 chatroom.user_id = parseInt(chatroom.user_id);
                 chatroom.msg_count = 0;
+                chatroom.users = [];
+                chatroom.user_count = 0;
                 chatroom.created_at = new Date().getTime();
        
                 this.chatrooms.push(chatroom);
@@ -283,9 +285,7 @@ function ChatUsers() {
         var chatrooms = [];
         for(var i in this.chatrooms){
             var chatroom = this.chatrooms[i];
-            delete chatroom.user_id;
-            delete chatroom.created_at;
-            chatrooms.push(chatroom);
+            chatrooms.push({ name: chatroom.name, id: chatroom.id, msg_count: chatroom.msg_count, user_count: chatroom.user_count });
         }
         callback(chatrooms);
     };
@@ -317,7 +317,18 @@ function ChatUsers() {
             var chatroom = this.getChatroomById(chatroom_message.chatroom_id);
             if(chatroom){
                 chatroom.msg_count++;
+                
+                var found_users = chatroom.users.filter(function(item){
+                    return item === chatroom_message.user_id;
+                });
+                
+                if(found_users.length === 0){
+                    chatroom.users.push(chatroom_message.user_id);
+                    chatroom.user_count++;
+                }
+                
                 chatroom_message.msg_count = chatroom.msg_count;
+                chatroom_message.user_count = chatroom.user_count;
             }
         
             callback(false, chatroom_message);
