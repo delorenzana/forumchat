@@ -66,16 +66,6 @@ function ChatBar() {
         });
     };
     
-//    this.getCookie = function() {
-//        var name = this.cookie_name;
-//        var value = "; " + document.cookie;
-//        var parts = value.split("; " + name + "=");
-//        if (parts.length === 2){ 
-//            return parts.pop().split(";").shift();
-//        }
-//        return document.cookie;
-//    }
-    
     this.template = function (templateHTML, data) {
         for(var x in data) {
             var torep = new RegExp('{{'+x+'}}', 'gi');
@@ -888,6 +878,10 @@ function ChatBar() {
     this.notifyUserOfMessage = function(obj){
         if(document.querySelectorAll('#online_users_list'+obj.with_user_id+' #online_user_'+obj.user_id).length !== 0){
             document.querySelector('#online_users_list'+obj.with_user_id+' #online_user_'+obj.user_id+' a').setAttribute('class', 'active');
+            // open chat here if not open
+            if(document.querySelectorAll('#private_chat_'+obj.private_chat_id).length === 0){
+                this.startPrivateChat({ user_id: obj.user_id, username: obj.username })
+            }
         }
     }
     

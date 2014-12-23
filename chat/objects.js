@@ -160,23 +160,24 @@ function ChatUsers() {
     this.closePrivateChat = function(private_chat, callback){
         private_chat.user_id = parseInt(private_chat.user_id);
         private_chat.with_user_id = parseInt(private_chat.with_user_id);
-        if(this.verifyToken(private_chat.user_id, private_chat.token) === null){
-            callback(true);
-        } else if(this.verifyPrivateChatToken(private_chat.id, private_chat.token)) {
+        if(this.verifyToken(private_chat.user_id, private_chat.token) || this.verifyToken(private_chat.with_user_id, private_chat.token)){
+            if(this.verifyPrivateChatToken(private_chat.id, private_chat.token)){
+                var found_private_chats = this.private_chats.filter(function(item){
+                    return (((item.user_id === private_chat.user_id) && (item.with_user_id === private_chat.with_user_id))
+                        || ((item.user_id === private_chat.with_user_id) && (item.with_user_id === private_chat.user_id))
+                    );
+                });
             
-            var found_private_chats = this.private_chats.filter(function(item){
-                return (((item.user_id === private_chat.user_id) && (item.with_user_id === private_chat.with_user_id))
-                       || ((item.user_id === private_chat.with_user_id) && (item.with_user_id === private_chat.user_id))
-                       );
-            });
-            
-            if(found_private_chats.length === 1){
-                found_private_chats[0].is_open = false;
-                private_chat = found_private_chats[0];
-            }
+                if(found_private_chats.length === 1){
+                    found_private_chats[0].is_open = false;
+                    private_chat = found_private_chats[0];
+                }
         
-            callback(false, private_chat);
-        } else {
+                callback(false, private_chat);
+            }else{
+                callback(true);
+            }
+        }else{
             callback(true);
         }
     };
