@@ -336,5 +336,5 @@ function ChatUsers() {
     };
 }
 
-module.exports.ChatUsers = ChatUsers;
+module.exports = new ChatUsers();
 

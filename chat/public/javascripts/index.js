@@ -614,7 +614,7 @@ function ChatBar() {
             chatroomChatHeaderBlockP.innerHTML = chatroom.name;
             chatroomChatHeaderBlockP.onclick = function() { return self.toggleChatroomChatHeader(chatroom.id); };
     
-            var chatroomChatHeader = document.querySelector('#chatroom_'+chatroom.id+' .chat_title a');
+            var chatroomChatHeader = document.querySelector('#chatroom_'+chatroom.id+' .chat_title p');
             chatroomChatHeader.innerHTML = chatroom.name;
             chatroomChatHeader.onclick = function() { return self.toggleChatroomChat(chatroom.id); };
             

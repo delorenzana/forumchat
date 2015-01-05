@@ -6,8 +6,7 @@ var allowed_origin = "http://xenforo.localhost",
     logger = require('morgan'),
     cookieParser = require('cookie-parser'),
     bodyParser = require('body-parser'),
-    dbObjects = require('./objects.js'),
-    chatUsers = new dbObjects.ChatUsers(),
+    chatUsers = require('./objects.js'),
     app = express();
 
 app.use(logger('dev'));
